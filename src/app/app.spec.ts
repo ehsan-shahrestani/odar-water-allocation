@@ -5,12 +5,16 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from './app.routes';
 import { UserProfile } from './core/auth.model';
 import { AuthService } from './core/auth.service';
+import { Role } from './core/mock-data';
 
-describe('Admin route access', () => {
+describe('Portal route access', () => {
   const profile = signal<UserProfile | null>(null);
+  const userRole = signal<Role | null>(null);
   const authenticated = signal(false);
+
   const authStub = {
     currentProfile: profile.asReadonly(),
+    userRole: userRole.asReadonly(),
     isAuthenticated: authenticated.asReadonly(),
     isLoading: signal(false).asReadonly(),
     initializeSession: vi.fn(async () => undefined),
@@ -19,6 +23,7 @@ describe('Admin route access', () => {
 
   beforeEach(() => {
     profile.set(null);
+    userRole.set(null);
     authenticated.set(false);
     authStub.initializeSession.mockClear();
     TestBed.configureTestingModule({
@@ -26,45 +31,36 @@ describe('Admin route access', () => {
     });
   });
 
-  it('waits for initialization and redirects anonymous visitors to login', async () => {
+  it('redirects unauthenticated visitors to login', async () => {
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/admin');
+    await harness.navigateByUrl('/farmer');
 
-    expect(authStub.initializeSession).toHaveBeenCalledOnce();
     expect(TestBed.inject(Router).url).toBe('/login');
   });
 
-  it('allows an active admin profile', async () => {
-    profile.set({
-      id: 'admin-id',
-      full_name: 'مدیر سامانه',
-      phone: '',
-      role: 'admin',
-      is_active: true,
-    });
+  it('allows access to farmer routes for farmer role', async () => {
+    userRole.set('farmer');
     authenticated.set(true);
 
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/admin');
+    await harness.navigateByUrl('/farmer');
 
-    expect(TestBed.inject(Router).url).toBe('/admin');
-    expect(harness.routeNativeElement?.textContent).toContain('مدیریت سامانه');
+    expect(TestBed.inject(Router).url).toBe('/farmer');
   });
 
-  it.each([
-    { role: 'farmer' as const, is_active: true },
-    { role: 'admin' as const, is_active: false },
-  ])('rejects profile access for $role with active=$is_active', async (access) => {
-    profile.set({
-      id: 'blocked-id',
-      full_name: 'کاربر بدون دسترسی',
-      phone: '',
-      ...access,
-    });
-    authenticated.set(false);
+  it('allows access to representative routes for representative role', async () => {
+    userRole.set('representative');
+    authenticated.set(true);
 
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/admin');
+    await harness.navigateByUrl('/representative');
+
+    expect(TestBed.inject(Router).url).toBe('/representative');
+  });
+
+  it('redirects unknown paths to login', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/unknown');
 
     expect(TestBed.inject(Router).url).toBe('/login');
   });

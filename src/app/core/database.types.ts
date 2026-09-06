@@ -12,8 +12,60 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      admin_otp_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -43,21 +95,21 @@ export type Database = {
       }
       water_allocations: {
         Row: {
-          allocated_minutes: number
+          allocated_hours: number
           created_at: string
           id: string
           water_year_id: string
           well_farmer_id: string
         }
         Insert: {
-          allocated_minutes: number
+          allocated_hours: number
           created_at?: string
           id?: string
           water_year_id: string
           well_farmer_id: string
         }
         Update: {
-          allocated_minutes?: number
+          allocated_hours?: number
           created_at?: string
           id?: string
           water_year_id?: string
@@ -83,7 +135,7 @@ export type Database = {
       water_usages: {
         Row: {
           allocation_id: string
-          consumed_minutes: number
+          consumed_hours: number
           created_at: string
           created_by: string
           description: string | null
@@ -92,7 +144,7 @@ export type Database = {
         }
         Insert: {
           allocation_id: string
-          consumed_minutes: number
+          consumed_hours: number
           created_at?: string
           created_by: string
           description?: string | null
@@ -101,7 +153,7 @@ export type Database = {
         }
         Update: {
           allocation_id?: string
-          consumed_minutes?: number
+          consumed_hours?: number
           created_at?: string
           created_by?: string
           description?: string | null
@@ -362,6 +414,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

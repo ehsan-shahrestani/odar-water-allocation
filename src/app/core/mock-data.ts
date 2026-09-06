@@ -31,3 +31,13 @@ export const normalizeDigits = (value: string) =>
     .trim();
 export const normalizeName = (value: string) =>
   value.replace(/ي/g, 'ی').replace(/ك/g, 'ک').replace(/\s+/g, ' ').trim();
+
+export const parseHoursNumber = (value: string | number | null | undefined): number | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') return isNaN(value) ? null : value;
+  const str = String(value).trim();
+  if (!str) return null;
+  const normalized = normalizeDigits(str).replace(/[٫،]/g, '.');
+  const parsed = parseFloat(normalized);
+  return isNaN(parsed) ? null : parsed;
+};
