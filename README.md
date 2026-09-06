@@ -1,59 +1,46 @@
-# OdarWaterAllocation
+# اُدار — سهم آب
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.5.
+اپ فارسی RTL با Angular 22 Standalone، Tailwind CSS v4، Signals، Signal Forms و Router. چهار صفحه با عرض پایه و حداکثر 390px؛ در نمایشگر کوچک‌تر نیز عرض تطبیق دارد. فونت Vazirmatn از `public/fonts` با مجوز OFL به‌صورت محلی بارگیری می‌شود.
 
-## Development server
+نسخه production یک PWA قابل نصب است. manifest فارسی، آیکن اختصاصی و Angular Service Worker دارد و فایل‌های اصلی، فونت‌ها و آیکن‌ها را برای اجرای آفلاین ذخیره می‌کند. Service Worker در حالت development غیرفعال است و روی HTTPS یا localhost فعال می‌شود.
 
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## اجرا و بررسی
 
 ```bash
-ng generate component component-name
+npm ci
+npm start
+npm run build
+npm run lint
+npm run test:unit
+npm run test:e2e
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## اتصال Supabase و ورود ادمین
 
-```bash
-ng generate --help
-```
+مقادیر `supabaseUrl` و `supabasePublishableKey` را در هر دو فایل زیر جایگزین کنید:
 
-## Building
+- `src/environments/environment.ts` برای build تولید
+- `src/environments/environment.development.ts` برای اجرای development
 
-To build the project run:
+فقط Project URL و Publishable Key مرورگر را وارد کنید. Secret Key، `service_role` و رمز دیتابیس نباید وارد کد Angular شوند.
 
-```bash
-ng build
-```
+ورود `/login` با ایمیل و رمز Supabase انجام می‌شود. پس از ورود، رکورد متناظر `profiles` خوانده می‌شود و فقط پروفایل فعال با نقش `admin` به `/admin` دسترسی دارد. نگهداری و نوسازی Session را `@supabase/supabase-js` انجام می‌دهد. guard سمت Angular فقط برای تجربه کاربری است و RLS همچنان مرجع امنیت داده‌هاست.
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## محدوده نسخه
 
-## Running unit tests
+- خانه کشاورز: نام، چاه، مشخصات کامل سال آبی، سهمیه، مصرف، مانده و سه مصرف آخر.
+- خانه نماینده: نام، چاه، سال آبی، دو دکمه و جستجوی فعال لیست کشاورزان.
+- خانه ادمین: سه شمارنده و ورودی لیست‌ها.
+- ثبت مصرف، افزودن کشاورز و لیست‌های ادمین خارج از چهار صفحه هستند؛ کنترل‌های آن‌ها پیام صریح عدم پیاده‌سازی نشان می‌دهند و مسیر جدید یا عملیات نوشتن ندارند.
+- `@supabase/supabase-js` برای ورود ادمین، بازیابی Session و دریافت پروفایل استفاده می‌شود.
+- بدون SSR، SCSS، NestJS، NgRx و کتابخانه UI.
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## ساختار
 
-```bash
-ng test
-```
+- `src/app/features/`: صفحه ورود و route/layout/home هر نقش.
+- `src/app/shared/`: button، input، card، page-header و bottom-navigation.
+- `src/app/core/`: داده‌های آزمایشی، ورود و guard.
+- `src/styles.css`: فونت محلی و سبک مشترک RTL.
+- `.agents/skills/`: مهارت‌های رسمی `angular-developer` و `angular-new-app` از https://github.com/angular/skills.
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+تست مرورگر از Chrome نصب‌شده یا مسیر `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` استفاده می‌کند. سرور موقت تست با خروجی production اجرا و پس از تست متوقف می‌شود.
