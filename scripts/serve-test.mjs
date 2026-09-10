@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
-const root = resolve('dist/odar-water-allocation/browser');
+const root = resolve('dist/client/browser');
 const types = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript',

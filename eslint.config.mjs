@@ -4,7 +4,7 @@ import angular from 'angular-eslint';
 export default tseslint.config(
   { ignores: ['dist/**', 'node_modules/**', '.agents/**'] },
   {
-    files: ['src/**/*.ts', 'projects/**/*.ts'],
+    files: ['projects/**/*.ts'],
     extends: [
       eslint.configs.recommended,
       ...tseslint.configs.recommended,
@@ -13,7 +13,7 @@ export default tseslint.config(
     processor: angular.processInlineTemplates,
   },
   {
-    files: ['src/**/*.html', 'projects/**/*.html'],
+    files: ['projects/**/*.html'],
     extends: [...angular.configs.templateRecommended, ...angular.configs.templateAccessibility],
   },
 );

@@ -6,25 +6,25 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "odar-water-allocation": {
+    "client": {
       "projectType": "application",
       "schematics": {},
-      "root": "",
-      "sourceRoot": "src",
+      "root": "projects/client",
+      "sourceRoot": "projects/client/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "src/main.ts",
-            "tsConfig": "tsconfig.app.json",
+            "browser": "projects/client/src/main.ts",
+            "tsConfig": "projects/client/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
+                "input": "projects/client/public"
               }
             ],
-            "styles": ["src/styles.css"]
+            "styles": ["projects/client/src/styles.css"]
           },
           "configurations": {
             "production": {
@@ -41,7 +41,7 @@
                 }
               ],
               "outputHashing": "all",
-              "serviceWorker": "ngsw-config.json"
+              "serviceWorker": "projects/client/ngsw-config.json"
             },
             "development": {
               "optimization": false,
@@ -49,8 +49,8 @@
               "sourceMap": true,
               "fileReplacements": [
                 {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.development.ts"
+                  "replace": "projects/client/src/environments/environment.ts",
+                  "with": "projects/client/src/environments/environment.development.ts"
                 }
               ]
             }
@@ -61,10 +61,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "odar-water-allocation:build:production"
+              "buildTarget": "client:build:production"
             },
             "development": {
-              "buildTarget": "odar-water-allocation:build:development"
+              "buildTarget": "client:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -89,7 +89,7 @@
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
+                "input": "projects/admin/public"
               }
             ],
             "styles": ["projects/admin/src/styles.css"]
