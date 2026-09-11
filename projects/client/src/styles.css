@@ -33,6 +33,9 @@
   --line: #d7e5dc;
   --surface: #ffffff;
 }
+[data-sonner-toaster] {
+  font-family: Vazirmatn, sans-serif !important;
+}
 * {
   box-sizing: border-box;
 }

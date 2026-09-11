@@ -8,8 +8,8 @@ export interface AdminWell {
   name: string;
   description: string | null;
   representative_id: string | null;
-  representative_name?: string;
-  representative_phone?: string;
+  representative_name?: string | null;
+  representative_phone?: string | null;
   created_at: string;
   farmer_count?: number;
   active_water_year?: string;
@@ -21,6 +21,7 @@ export interface AdminWaterYear {
   description: string;
   start_date: string;
   end_date: string;
+  hours_per_share?: number | null;
   created_at: string;
 }
 
@@ -35,6 +36,19 @@ export interface AdminWellFarmer {
   allocatedHours?: number;
   usedHours?: number;
   remainingHours?: number;
+}
+
+export interface AdminWellExpense {
+  id: string;
+  well_id: string;
+  title: string;
+  cost: number;
+  expense_type: string;
+  recipient_phone?: string | null;
+  recipient_name?: string | null;
+  message_id?: string | null;
+  description?: string | null;
+  created_at: string;
 }
 
 export interface DashboardStats {
@@ -237,6 +251,57 @@ export class AdminDataService {
     return wells;
   }
 
+  async getWell(id: string): Promise<AdminWell> {
+    interface WellQueryResult {
+      id: string;
+      name: string;
+      description: string | null;
+      representative_id: string | null;
+      created_at: string;
+      representative: { id: string; full_name: string; phone: string } | { id: string; full_name: string; phone: string }[] | null;
+      well_farmers?: { id: string }[];
+      water_years?: { id: string; description: string; start_date: string; end_date: string }[];
+    }
+
+    const { data, error } = await this.supabase
+      .from('wells')
+      .select(
+        `
+        id,
+        name,
+        description,
+        representative_id,
+        created_at,
+        representative:profiles!wells_representative_id_fkey(id, full_name, phone),
+        well_farmers(id),
+        water_years(id, description, start_date, end_date)
+      `
+      )
+      .eq('id', id)
+      .single();
+
+    if (error || !data) {
+      throw new Error(`خطا در دریافت اطلاعات چاه: ${error?.message || 'چاه یافت نشد'}`);
+    }
+
+    const row = data as unknown as WellQueryResult;
+    const rep = Array.isArray(row.representative) ? row.representative[0] : row.representative;
+    const waterYears = Array.isArray(row.water_years) ? row.water_years : [];
+    const latestWy = waterYears[waterYears.length - 1];
+
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      representative_id: row.representative_id,
+      representative_name: rep?.full_name || undefined,
+      representative_phone: rep?.phone || undefined,
+      created_at: row.created_at,
+      farmer_count: Array.isArray(row.well_farmers) ? row.well_farmers.length : 0,
+      active_water_year: latestWy ? latestWy.description : undefined,
+    };
+  }
+
   async createWell(well: {
     name: string;
     description?: string | null;
@@ -290,11 +355,53 @@ export class AdminDataService {
     }
   }
 
+  async changeWellRepresentative(
+    wellId: string,
+    representativeId: string | null
+  ): Promise<void> {
+    await this.updateWell(wellId, { representative_id: representativeId });
+  }
+
+  async notifyRepresentativeAssigned(params: {
+    wellId: string;
+    wellName: string;
+    representativeId: string;
+    phone?: string;
+    fullName?: string;
+  }): Promise<{ success: boolean; message?: string; cost?: number }> {
+    try {
+      const response = await this.supabase.functions.invoke('send-representative-sms', {
+        body: params,
+      });
+
+      const data = response.data as {
+        success?: boolean;
+        message?: string;
+        error?: string;
+        cost?: number;
+      } | null;
+
+      if (data?.success) {
+        return { success: true, message: data.message, cost: data.cost };
+      }
+      return {
+        success: false,
+        message: data?.error || 'عدم موفقیت در ارسال پیامک به نماینده',
+      };
+    } catch (err: unknown) {
+      console.error('Error invoking send-representative-sms:', err);
+      return {
+        success: false,
+        message: err instanceof Error ? err.message : 'خطا در فراخوانی سرویس پیامک',
+      };
+    }
+  }
+
   // --- Water Years Management ---
   async getWaterYears(wellId: string): Promise<AdminWaterYear[]> {
     const { data, error } = await this.supabase
       .from('water_years')
-      .select('id, well_id, description, start_date, end_date, created_at')
+      .select('id, well_id, description, start_date, end_date, hours_per_share, created_at')
       .eq('well_id', wellId)
       .order('start_date', { ascending: false });
 
@@ -310,6 +417,7 @@ export class AdminDataService {
     description: string;
     start_date: string;
     end_date: string;
+    hours_per_share?: number | null;
   }): Promise<AdminWaterYear> {
     const { data, error } = await this.supabase
       .from('water_years')
@@ -318,6 +426,7 @@ export class AdminDataService {
         description: wy.description.trim(),
         start_date: wy.start_date,
         end_date: wy.end_date,
+        hours_per_share: wy.hours_per_share !== undefined && wy.hours_per_share !== null ? wy.hours_per_share : null,
       })
       .select()
       .single();
@@ -548,6 +657,10 @@ export class AdminDataService {
     return defer(() => from(this.getWells(queryStr)));
   }
 
+  getWell$(id: string): Observable<AdminWell> {
+    return defer(() => from(this.getWell(id)));
+  }
+
   createWell$(well: {
     name: string;
     description?: string | null;
@@ -563,6 +676,23 @@ export class AdminDataService {
     return defer(() => from(this.updateWell(id, updates)));
   }
 
+  changeWellRepresentative$(
+    wellId: string,
+    representativeId: string | null
+  ): Observable<void> {
+    return defer(() => from(this.changeWellRepresentative(wellId, representativeId)));
+  }
+
+  notifyRepresentativeAssigned$(params: {
+    wellId: string;
+    wellName: string;
+    representativeId: string;
+    phone?: string;
+    fullName?: string;
+  }): Observable<{ success: boolean; message?: string; cost?: number }> {
+    return defer(() => from(this.notifyRepresentativeAssigned(params)));
+  }
+
   getWaterYears$(wellId: string): Observable<AdminWaterYear[]> {
     return defer(() => from(this.getWaterYears(wellId)));
   }
@@ -572,6 +702,7 @@ export class AdminDataService {
     description: string;
     start_date: string;
     end_date: string;
+    hours_per_share?: number | null;
   }): Observable<AdminWaterYear> {
     return defer(() => from(this.createWaterYear(wy)));
   }
@@ -598,5 +729,76 @@ export class AdminDataService {
 
   removeFarmerFromWell$(wellFarmerId: string): Observable<void> {
     return defer(() => from(this.removeFarmerFromWell(wellFarmerId)));
+  }
+
+  // --- Well Expenses & SMS Management ---
+  async getWellExpenses(wellId: string): Promise<AdminWellExpense[]> {
+    const { data, error } = await this.supabase
+      .from('well_expenses')
+      .select('id, well_id, title, cost, expense_type, recipient_phone, recipient_name, message_id, description, created_at')
+      .eq('well_id', wellId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`خطا در دریافت هزینه‌های چاه: ${error.message}`);
+    }
+    return (data || []) as AdminWellExpense[];
+  }
+
+  getWellExpenses$(wellId: string): Observable<AdminWellExpense[]> {
+    return defer(() => from(this.getWellExpenses(wellId)));
+  }
+
+  async notifyFarmerQuotaAssigned(params: {
+    wellId: string;
+    wellName?: string;
+    waterYearId?: string;
+    farmerId?: string;
+    farmerPhone?: string;
+    farmerName?: string;
+    allocatedHours: number;
+    hoursPerShare?: number | null;
+    includeHoursPerShare?: boolean;
+  }): Promise<{ success: boolean; message?: string; cost?: number }> {
+    try {
+      const response = await this.supabase.functions.invoke('send-quota-sms', {
+        body: params,
+      });
+
+      const data = response.data as {
+        success?: boolean;
+        message?: string;
+        error?: string;
+        cost?: number;
+      } | null;
+
+      if (data?.success) {
+        return { success: true, message: data.message, cost: data.cost };
+      }
+      return {
+        success: false,
+        message: data?.error || 'عدم موفقیت در ارسال پیامک سهمیه به کشاورز',
+      };
+    } catch (err: unknown) {
+      console.error('Error invoking send-quota-sms:', err);
+      return {
+        success: false,
+        message: err instanceof Error ? err.message : 'خطا در فراخوانی سرویس پیامک',
+      };
+    }
+  }
+
+  notifyFarmerQuotaAssigned$(params: {
+    wellId: string;
+    wellName?: string;
+    waterYearId?: string;
+    farmerId?: string;
+    farmerPhone?: string;
+    farmerName?: string;
+    allocatedHours: number;
+    hoursPerShare?: number | null;
+    includeHoursPerShare?: boolean;
+  }): Observable<{ success: boolean; message?: string; cost?: number }> {
+    return defer(() => from(this.notifyFarmerQuotaAssigned(params)));
   }
 }

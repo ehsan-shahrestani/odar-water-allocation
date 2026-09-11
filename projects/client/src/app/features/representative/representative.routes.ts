@@ -15,6 +15,15 @@ export const routes: Routes = [
             (m) => m.RepresentativeHomeComponent,
           ),
       },
+      {
+        path: 'farmer/:farmerId',
+        title: 'جزییات کشاورز | اُدار',
+        loadComponent: () =>
+          import('./farmer-detail/farmer-detail.component').then(
+            (m) => m.FarmerDetailComponent,
+          ),
+      },
     ],
   },
 ];
+

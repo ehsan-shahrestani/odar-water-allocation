@@ -1,0 +1,166 @@
+<main class="login-wrapper">
+  <div class="login-container">
+    <!-- Brand & Identity Header -->
+    <header class="brand-section">
+      <div class="brand-logo-wrap" aria-hidden="true">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/>
+        </svg>
+      </div>
+      <h1 class="brand-title">سامانه تخصیص آب اُدار</h1>
+      <p class="brand-subtitle">پورتال کشاورزان و نمایندگان چاه</p>
+    </header>
+
+    @if (step() === 'PHONE') {
+      <!-- Step 1: Mobile Phone Entry (No Card, Clean, Centered) -->
+      <form
+        novalidate
+        (submit)="requestOtp(); $event.preventDefault()"
+        class="login-form"
+        [attr.aria-busy]="auth.isLoading()"
+      >
+        <div class="form-title-group">
+          <h2 class="form-heading">ورود به حساب</h2>
+          <p class="form-subheading">برای ورود، شماره موبایل خود را وارد کنید.</p>
+        </div>
+
+        <div class="input-block">
+          <label for="phone" class="input-label">شماره موبایل</label>
+          <div class="input-field-wrap">
+            <input
+              #phoneInput
+              id="phone"
+              type="tel"
+              dir="ltr"
+              inputmode="tel"
+              autocomplete="tel"
+              placeholder="۰۹۱۲۳۴۵۶۷۸۹"
+              [value]="phone()"
+              (input)="phone.set($any($event.target).value)"
+              [attr.aria-invalid]="error() ? 'true' : null"
+              aria-describedby="login-error"
+              class="login-input"
+            />
+            <span class="input-icon" aria-hidden="true">
+              <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 4V3z"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        @if (error()) {
+          <div id="login-error" role="alert" class="login-alert">
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <span>{{ error() }}</span>
+          </div>
+        }
+
+        <button app-button type="submit" class="submit-btn" [disabled]="auth.isLoading()">
+          @if (auth.isLoading()) {
+            <span class="loading-spinner" aria-hidden="true"></span>
+            <span role="status">در حال ارسال پیامک…</span>
+          } @else {
+            دریافت کد تایید پیامکی
+          }
+        </button>
+
+        <p class="form-hint-text">
+          رمز یکبار مصرف از طریق پیامک برای شما ارسال خواهد شد.
+        </p>
+      </form>
+    } @else {
+      <!-- Step 2: OTP Verification (No Card, Clean, Centered) -->
+      <form
+        novalidate
+        (submit)="verifyOtp(); $event.preventDefault()"
+        class="login-form"
+        [attr.aria-busy]="auth.isLoading()"
+      >
+        <div class="form-title-group">
+          <h2 class="form-heading">تایید شماره موبایل</h2>
+          <p class="form-subheading">
+            کد تایید ۶ رقمی به شماره
+            <strong dir="ltr" class="phone-highlight">{{ phone() }}</strong>
+            پیامک شد.
+          </p>
+        </div>
+
+        <div class="input-block">
+          <label for="otpCode" class="input-label">کد تایید پیامکی</label>
+          <input
+            #otpInput
+            id="otpCode"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            dir="ltr"
+            autocomplete="one-time-code"
+            placeholder="— — — — — —"
+            [value]="otpCode()"
+            (input)="otpCode.set($any($event.target).value)"
+            [attr.aria-invalid]="error() ? 'true' : null"
+            aria-describedby="otp-error"
+            class="otp-input"
+          />
+        </div>
+
+        @if (error()) {
+          <div id="otp-error" role="alert" class="login-alert">
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <span>{{ error() }}</span>
+          </div>
+        }
+
+        @if (isAdminAccount()) {
+          <div class="admin-notice" role="note">
+            <p class="admin-notice-text">حساب شما مربوط به «مدیر سامانه» است. لطفاً از پنل مدیریت استفاده نمایید:</p>
+            <a href="http://localhost:4201" class="admin-panel-link">
+              ورود به پنل مدیریت (پورت ۴۲۰۱)
+            </a>
+          </div>
+        }
+
+        <button app-button type="submit" class="submit-btn" [disabled]="auth.isLoading()">
+          @if (auth.isLoading()) {
+            <span class="loading-spinner" aria-hidden="true"></span>
+            <span role="status">در حال بررسی کد…</span>
+          } @else {
+            ورود به سامانه
+          }
+        </button>
+
+        <div class="otp-actions-row">
+          @if (countdown() > 0) {
+            <span class="countdown-text">
+              ارسال مجدد تا {{ countdown() }} ثانیه
+            </span>
+          } @else {
+            <button
+              type="button"
+              class="action-link resend-link"
+              [disabled]="auth.isLoading()"
+              (click)="resendOtp()"
+            >
+              ارسال مجدد کد
+            </button>
+          }
+
+          <button
+            type="button"
+            class="action-link edit-phone-link"
+            [disabled]="auth.isLoading()"
+            (click)="changePhone()"
+          >
+            تغییر شماره
+          </button>
+        </div>
+      </form>
+    }
+  </div>
+</main>

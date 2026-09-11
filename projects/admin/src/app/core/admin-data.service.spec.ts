@@ -46,6 +46,9 @@ describe('AdminDataService', () => {
                   return {
                     select: () => ({
                       order: () => Promise.resolve({ data: mockWells, error: null }),
+                      eq: () => ({
+                        single: () => Promise.resolve({ data: mockWells[0], error: null }),
+                      }),
                     }),
                     insert: (payload: Record<string, unknown>) => ({
                       select: () => ({
@@ -92,11 +95,44 @@ describe('AdminDataService', () => {
                     }),
                   };
                 }
+                if (table === 'well_expenses') {
+                  return {
+                    select: () => ({
+                      eq: () => ({
+                        order: () =>
+                          Promise.resolve({
+                            data: [
+                              {
+                                id: 'exp-1',
+                                well_id: 'well-1',
+                                title: 'هزینه سرویس پیامکی',
+                                cost: 1200,
+                                expense_type: 'sms',
+                                recipient_name: 'علی رضایی',
+                                recipient_phone: '09123456789',
+                                message_id: '123456',
+                                description: 'پیامک کسر ۱۰ ساعت مصرف آب',
+                                created_at: '2026-09-11T08:00:00Z',
+                              },
+                            ],
+                            error: null,
+                          }),
+                      }),
+                    }),
+                  };
+                }
                 return {
                   select: () => Promise.resolve({ data: [], error: null }),
                   insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
                   delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
                 };
+              },
+              functions: {
+                invoke: () =>
+                  Promise.resolve({
+                    data: { success: true, message: 'پیامک با موفقیت ارسال شد', cost: 1200 },
+                    error: null,
+                  }),
               },
             },
           },
@@ -165,5 +201,64 @@ describe('AdminDataService', () => {
     expect(years.length).toBe(1);
     expect(years[0].start_date).toBe('2026-10-07');
     expect(years[0].end_date).toBe('2027-09-22');
+  });
+
+  it('should retrieve well expenses including SMS costs from Supabase', async () => {
+    const expenses = await service.getWellExpenses('well-1');
+    expect(expenses.length).toBe(1);
+    expect(expenses[0].title).toBe('هزینه سرویس پیامکی');
+    expect(expenses[0].cost).toBe(1200);
+    expect(expenses[0].recipient_name).toBe('علی رضایی');
+    expect(expenses[0].recipient_phone).toBe('09123456789');
+  });
+
+  it('should retrieve a single well by id from Supabase', async () => {
+    const well = await service.getWell('well-1');
+    expect(well.id).toBe('well-1');
+    expect(well.name).toBe('چاه یک');
+  });
+
+  it('should update well representative via changeWellRepresentative', async () => {
+    await expect(service.changeWellRepresentative('well-1', 'usr-new')).resolves.toBeUndefined();
+    await expect(service.changeWellRepresentative('well-1', null)).resolves.toBeUndefined();
+  });
+
+  it('should notify representative via notifyRepresentativeAssigned', async () => {
+    const res = await service.notifyRepresentativeAssigned({
+      wellId: 'well-1',
+      wellName: 'چاه یک',
+      representativeId: 'usr-2',
+      phone: '09123456789',
+      fullName: 'نماینده یک',
+    });
+    expect(res.success).toBe(true);
+    expect(res.cost).toBe(1200);
+  });
+
+  it('should create water year with hours_per_share', async () => {
+    const wy = await service.createWaterYear({
+      well_id: 'well-1',
+      description: 'سال آبی ۱۴۰۴ - ۱۴۰۵',
+      start_date: '2025-09-23',
+      end_date: '2026-09-22',
+      hours_per_share: 16,
+    });
+    expect(wy.id).toBe('new-wy-id');
+    expect(wy.hours_per_share).toBe(16);
+  });
+
+  it('should notify farmer quota assigned via notifyFarmerQuotaAssigned', async () => {
+    const res = await service.notifyFarmerQuotaAssigned({
+      wellId: 'well-1',
+      wellName: 'چاه یک',
+      waterYearId: 'wy-1',
+      farmerId: 'usr-1',
+      farmerPhone: '09121111111',
+      farmerName: 'کاربر یک',
+      allocatedHours: 140,
+      hoursPerShare: 16,
+    });
+    expect(res.success).toBe(true);
+    expect(res.cost).toBe(1200);
   });
 });

@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { toast } from 'ngx-sonner';
 import { AuthService } from '../../../core/auth.service';
 import { FarmerDashboardData, PortalDataService } from '../../../core/portal-data.service';
 import { ButtonComponent } from '../../../shared/button/button.component';
@@ -166,13 +167,16 @@ export class FarmerHomeComponent implements OnInit {
       const data = await this.portalData.getFarmerDashboard(currentId);
       this.dashboard.set(data);
     } catch (err: unknown) {
-      this.error.set(err instanceof Error ? err.message : 'خطا در دریافت اطلاعات سامانه');
+      const msg = err instanceof Error ? err.message : 'خطا در دریافت اطلاعات سامانه';
+      this.error.set(msg);
+      toast.error(msg);
     } finally {
       this.loading.set(false);
     }
   }
 
   protected async logout(): Promise<void> {
+    toast.info('در حال خروج از حساب...');
     await this.auth.logout();
   }
 }

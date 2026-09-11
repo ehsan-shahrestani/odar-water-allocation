@@ -24,6 +24,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./wells/wells.component').then((m) => m.AdminWellsComponent),
       },
+      {
+        path: 'wells/:id',
+        title: 'جزئیات چاه | اُدار',
+        loadComponent: () =>
+          import('./wells/well-detail/well-detail.component').then((m) => m.WellDetailComponent),
+      },
     ],
   },
 ];

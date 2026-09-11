@@ -590,9 +590,15 @@ import { UserProfile, UserRole } from '@core/auth.model';
 
     /* Mobile Cards */
     .mobile-cards {
-      display: flex;
-      flex-direction: column;
-      divide-y: 1px solid #edf3ef;
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-cards {
+        display: flex;
+        flex-direction: column;
+        divide-y: 1px solid #edf3ef;
+      }
     }
 
     .mobile-user-card {

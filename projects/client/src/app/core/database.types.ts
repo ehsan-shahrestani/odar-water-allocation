@@ -182,6 +182,7 @@ export type Database = {
           created_at: string
           description: string
           end_date: string
+          hours_per_share: number | null
           id: string
           start_date: string
           well_id: string
@@ -190,6 +191,7 @@ export type Database = {
           created_at?: string
           description: string
           end_date: string
+          hours_per_share?: number | null
           id?: string
           start_date: string
           well_id: string
@@ -198,6 +200,7 @@ export type Database = {
           created_at?: string
           description?: string
           end_date?: string
+          hours_per_share?: number | null
           id?: string
           start_date?: string
           well_id?: string
@@ -276,6 +279,53 @@ export type Database = {
             columns: ["representative_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      well_expenses: {
+        Row: {
+          cost: number
+          created_at: string
+          description: string | null
+          expense_type: string
+          id: string
+          message_id: string | null
+          recipient_name: string | null
+          recipient_phone: string | null
+          title: string
+          well_id: string
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          description?: string | null
+          expense_type?: string
+          id?: string
+          message_id?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          title?: string
+          well_id: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          description?: string | null
+          expense_type?: string
+          id?: string
+          message_id?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          title?: string
+          well_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "well_expenses_well_id_fkey"
+            columns: ["well_id"]
+            isOneToOne: false
+            referencedRelation: "wells"
             referencedColumns: ["id"]
           },
         ]
