@@ -1,0 +1,56 @@
+name: Daily Supabase Database Backup to Liara S3
+
+on:
+  schedule:
+    # Runs every night at 21:30 UTC (01:00 AM Iran Standard Time)
+    - cron: '30 21 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions UI anytime
+
+jobs:
+  backup:
+    name: Backup Supabase DB to Liara Object Storage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL 17 Client
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y curl ca-certificates gnupg lsb-release
+          sudo install -d /etc/apt/keyrings
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Create Database Backup
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          BACKUP_DATE=$(date +'%Y_%m_%d_%H%M%S')
+          BACKUP_FILE="odar_backup_${BACKUP_DATE}.sql.gz"
+          echo "BACKUP_FILE=${BACKUP_FILE}" >> $GITHUB_ENV
+
+          echo "Starting pg_dump from Supabase..."
+          pg_dump "${SUPABASE_DB_URL}" \
+            --clean \
+            --if-exists \
+            --no-owner \
+            --no-privileges | gzip > "${BACKUP_FILE}"
+
+          FILESIZE=$(stat -c%s "${BACKUP_FILE}")
+          echo "Backup generated successfully: ${BACKUP_FILE} (${FILESIZE} bytes)"
+
+      - name: Upload Backup to Liara S3 Object Storage
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.LIARA_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.LIARA_SECRET_KEY }}
+          LIARA_ENDPOINT: ${{ secrets.LIARA_ENDPOINT }}
+          LIARA_BUCKET_NAME: ${{ secrets.LIARA_BUCKET_NAME }}
+        run: |
+          echo "Configuring AWS CLI for Liara S3..."
+          aws configure set default.s3.signature_version s3v4
+
+          echo "Uploading ${BACKUP_FILE} to s3://${LIARA_BUCKET_NAME}/backups/${BACKUP_FILE}..."
+          aws --endpoint-url "${LIARA_ENDPOINT}" s3 cp "${BACKUP_FILE}" "s3://${LIARA_BUCKET_NAME}/backups/${BACKUP_FILE}"
+
+          echo "Backup uploaded successfully to Liara Object Storage!"
