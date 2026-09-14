@@ -26,6 +26,7 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          set -eo pipefail
           BACKUP_DATE=$(date +'%Y_%m_%d_%H%M%S')
           BACKUP_FILE="odar_backup_${BACKUP_DATE}.sql.gz"
           echo "BACKUP_FILE=${BACKUP_FILE}" >> $GITHUB_ENV
@@ -39,6 +40,13 @@ jobs:
 
           FILESIZE=$(stat -c%s "${BACKUP_FILE}")
           echo "FILESIZE=${FILESIZE}" >> $GITHUB_ENV
+
+          # If the backup is 20 bytes, pg_dump generated an empty stream
+          if [ "${FILESIZE}" -le 50 ]; then
+            echo "ERROR: Backup file is empty or corrupted (${FILESIZE} bytes)! Check database connection string and password."
+            exit 1
+          fi
+
           echo "Backup generated successfully: ${BACKUP_FILE} (${FILESIZE} bytes)"
 
       - name: Upload Backup to S3 Object Storage (ParsPack)
@@ -51,8 +59,16 @@ jobs:
           echo "Configuring AWS CLI for S3..."
           aws configure set default.s3.signature_version s3v4
 
+          # Ensure S3_ENDPOINT starts with https://
+          RAW_ENDPOINT="${S3_ENDPOINT}"
+          if [[ ! "${RAW_ENDPOINT}" =~ ^https?:// ]]; then
+            CLEAN_ENDPOINT="https://${RAW_ENDPOINT}"
+          else
+            CLEAN_ENDPOINT="${RAW_ENDPOINT}"
+          fi
+
           echo "Uploading ${BACKUP_FILE} to s3://${S3_BUCKET_NAME}/backups/${BACKUP_FILE}..."
-          aws --endpoint-url "${S3_ENDPOINT}" s3 cp "${BACKUP_FILE}" "s3://${S3_BUCKET_NAME}/backups/${BACKUP_FILE}"
+          aws --endpoint-url "${CLEAN_ENDPOINT}" s3 cp "${BACKUP_FILE}" "s3://${S3_BUCKET_NAME}/backups/${BACKUP_FILE}"
 
           echo "Backup uploaded successfully to Object Storage!"
 
