@@ -2,93 +2,150 @@ name: Daily Supabase Database Backup to S3 (ParsPack)
 
 on:
   schedule:
-    # Runs every night at 21:30 UTC (01:00 AM Iran Standard Time)
+    # 01:00 Iran time — 21:30 UTC
     - cron: '30 21 * * *'
-  workflow_dispatch: # Allows manual trigger from GitHub Actions UI anytime
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-supabase-backup
+  cancel-in-progress: false
 
 jobs:
   backup:
     name: Backup Supabase DB to ParsPack S3
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+      AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
+      AWS_DEFAULT_REGION: us-west-2
+      AWS_EC2_METADATA_DISABLED: true
+
+      S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+      S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
 
     steps:
-      - name: Install PostgreSQL 17 Client
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Create database backup
+        shell: bash
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y curl ca-certificates gnupg lsb-release
-          sudo install -d /etc/apt/keyrings
-          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg
-          echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-          sudo apt-get update -y
-          sudo apt-get install -y postgresql-client-17
+          set -Eeuo pipefail
+          umask 077
 
-      - name: Create Database Backup
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          backup_dir="$(mktemp -d)"
+          echo "BACKUP_DIR=$backup_dir" >> "$GITHUB_ENV"
+
+          timestamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+          backup_name="odar-supabase-${timestamp}-${GITHUB_RUN_ID}.tar.gz"
+
+          echo "Dumping roles..."
+          supabase db dump \
+            --db-url "$SUPABASE_DB_URL" \
+            --role-only \
+            -f "$backup_dir/roles.sql"
+
+          echo "Dumping schema..."
+          supabase db dump \
+            --db-url "$SUPABASE_DB_URL" \
+            -f "$backup_dir/schema.sql"
+
+          echo "Dumping data..."
+          supabase db dump \
+            --db-url "$SUPABASE_DB_URL" \
+            --data-only \
+            --use-copy \
+            -x "storage.buckets_vectors" \
+            -x "storage.vector_indexes" \
+            -f "$backup_dir/data.sql"
+
+          test -s "$backup_dir/roles.sql"
+          test -s "$backup_dir/schema.sql"
+          test -s "$backup_dir/data.sql"
+
+          (
+            cd "$backup_dir"
+            sha256sum roles.sql schema.sql data.sql > SHA256SUMS
+            tar -czf "$backup_name" roles.sql schema.sql data.sql SHA256SUMS
+          )
+
+          filesize="$(stat -c%s "$backup_dir/$backup_name")"
+
+          echo "BACKUP_FILE=$backup_name" >> "$GITHUB_ENV"
+          echo "FILESIZE=$filesize" >> "$GITHUB_ENV"
+
+          echo "Backup created successfully: $backup_name ($filesize bytes)"
+
+      - name: Upload backup to ParsPack
+        shell: bash
         run: |
-          BACKUP_DATE=$(date +'%Y_%m_%d_%H%M%S')
-          BACKUP_FILE="odar_backup_${BACKUP_DATE}.sql.gz"
-          echo "BACKUP_FILE=${BACKUP_FILE}" >> $GITHUB_ENV
+          set -Eeuo pipefail
 
-          echo "Starting pg_dump from Supabase..."
-          pg_dump "${SUPABASE_DB_URL}" \
-            --clean \
-            --if-exists \
-            --no-owner \
-            --no-privileges | gzip > "${BACKUP_FILE}"
-
-          FILESIZE=$(stat -c%s "${BACKUP_FILE}")
-          echo "FILESIZE=${FILESIZE}" >> $GITHUB_ENV
-          echo "Backup generated successfully: ${BACKUP_FILE} (${FILESIZE} bytes)"
-
-      - name: Upload Backup to S3 Object Storage (ParsPack)
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY || secrets.LIARA_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY || secrets.LIARA_SECRET_KEY }}
-          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT || secrets.LIARA_ENDPOINT }}
-          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME || secrets.LIARA_BUCKET_NAME }}
-        run: |
-          echo "Configuring AWS CLI for S3..."
-          aws configure set default.s3.signature_version s3v4
-
-          # Ensure endpoint has protocol
-          ENDPOINT="${S3_ENDPOINT}"
-          if [[ "${ENDPOINT}" != http://* && "${ENDPOINT}" != https://* ]]; then
-            ENDPOINT="https://${ENDPOINT}"
+          endpoint="$S3_ENDPOINT"
+          if [[ "$endpoint" != http://* && "$endpoint" != https://* ]]; then
+            endpoint="https://$endpoint"
           fi
 
-          echo "Uploading ${BACKUP_FILE} to s3://${S3_BUCKET_NAME}/backups/${BACKUP_FILE}..."
-          aws --endpoint-url "${ENDPOINT}" s3 cp "${BACKUP_FILE}" "s3://${S3_BUCKET_NAME}/backups/${BACKUP_FILE}"
+          aws configure set default.s3.signature_version s3v4
+          aws configure set default.s3.addressing_style path
 
-          echo "Backup uploaded successfully to Object Storage!"
+          object_key="backups/$(date -u +'%Y/%m/%d')/$BACKUP_FILE"
 
-      - name: Send Success SMS via Kavenegar
+          aws s3 cp \
+            "$BACKUP_DIR/$BACKUP_FILE" \
+            "s3://$S3_BUCKET_NAME/$object_key" \
+            --endpoint-url "$endpoint" \
+            --no-progress
+
+          aws s3api head-object \
+            --bucket "$S3_BUCKET_NAME" \
+            --key "$object_key" \
+            --endpoint-url "$endpoint" \
+            > /dev/null
+
+          echo "Backup uploaded and verified: $object_key"
+
+      - name: Send success SMS via Kavenegar
         if: success()
         env:
           KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
           ADMIN_PHONE: ${{ secrets.ADMIN_PHONE }}
         run: |
-          if [ -n "${KAVENEGAR_API_KEY}" ] && [ -n "${ADMIN_PHONE}" ]; then
-            SIZE_KB=$((${FILESIZE} / 1024))
-            MESSAGE="سامانه اُدار: پشتیبان‌گیری دیتابیس با موفقیت انجام شد.%0Aفایل: ${BACKUP_FILE}%0Aحجم: ${SIZE_KB} کیلوبایت%0Aمحل ذخیره: فضای ابری پارس‌پک"
-            curl -s -X POST "https://api.kavenegar.com/v1/${KAVENEGAR_API_KEY}/sms/send.json" \
+          if [ -n "$KAVENEGAR_API_KEY" ] && [ -n "$ADMIN_PHONE" ]; then
+            size_kb=$((FILESIZE / 1024))
+            message="سامانه اُدار: بکاپ دیتابیس با موفقیت انجام شد.%0Aفایل: ${BACKUP_FILE}%0Aحجم: ${size_kb} کیلوبایت"
+
+            curl --fail --silent --show-error -X POST \
+              "https://api.kavenegar.com/v1/${KAVENEGAR_API_KEY}/sms/send.json" \
               -d "receptor=${ADMIN_PHONE}" \
-              -d "message=${MESSAGE}"
-            echo "Success SMS notification sent to ${ADMIN_PHONE}"
-          else
-            echo "KAVENEGAR_API_KEY or ADMIN_PHONE is not configured. Skipping SMS."
+              -d "message=${message}"
           fi
 
-      - name: Send Failure SMS Alert via Kavenegar
+      - name: Send failure SMS via Kavenegar
         if: failure()
         env:
           KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
           ADMIN_PHONE: ${{ secrets.ADMIN_PHONE }}
         run: |
-          if [ -n "${KAVENEGAR_API_KEY}" ] && [ -n "${ADMIN_PHONE}" ]; then
-            MESSAGE="هشدار سامانه اُدار: پشتیبان‌گیری شبانه دیتابیس با خطا مواجه شد! لطفاً بخش GitHub Actions را بررسی کنید."
-            curl -s -X POST "https://api.kavenegar.com/v1/${KAVENEGAR_API_KEY}/sms/send.json" \
+          if [ -n "$KAVENEGAR_API_KEY" ] && [ -n "$ADMIN_PHONE" ]; then
+            curl --silent -X POST \
+              "https://api.kavenegar.com/v1/${KAVENEGAR_API_KEY}/sms/send.json" \
               -d "receptor=${ADMIN_PHONE}" \
-              -d "message=${MESSAGE}"
-            echo "Failure SMS alert sent to ${ADMIN_PHONE}"
+              -d "message=هشدار سامانه اُدار: بکاپ شبانه دیتابیس ناموفق بود. GitHub Actions را بررسی کنید."
+          fi
+
+      - name: Clean temporary files
+        if: always()
+        run: |
+          if [ -n "${BACKUP_DIR:-}" ]; then
+            rm -rf "$BACKUP_DIR"
           fi
