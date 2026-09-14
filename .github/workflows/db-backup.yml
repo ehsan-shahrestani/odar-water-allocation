@@ -38,6 +38,7 @@ jobs:
             --no-privileges | gzip > "${BACKUP_FILE}"
 
           FILESIZE=$(stat -c%s "${BACKUP_FILE}")
+          echo "FILESIZE=${FILESIZE}" >> $GITHUB_ENV
           echo "Backup generated successfully: ${BACKUP_FILE} (${FILESIZE} bytes)"
 
       - name: Upload Backup to Liara S3 Object Storage
@@ -54,3 +55,34 @@ jobs:
           aws --endpoint-url "${LIARA_ENDPOINT}" s3 cp "${BACKUP_FILE}" "s3://${LIARA_BUCKET_NAME}/backups/${BACKUP_FILE}"
 
           echo "Backup uploaded successfully to Liara Object Storage!"
+
+      - name: Send Success SMS via Kavenegar
+        if: success()
+        env:
+          KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
+          ADMIN_PHONE: ${{ secrets.ADMIN_PHONE }}
+        run: |
+          if [ -n "${KAVENEGAR_API_KEY}" ] && [ -n "${ADMIN_PHONE}" ]; then
+            SIZE_KB=$((${FILESIZE} / 1024))
+            MESSAGE="سامانه اُدار: پشتیبان‌گیری دیتابیس با موفقیت انجام شد.%0Aفایل: ${BACKUP_FILE}%0Aحجم: ${SIZE_KB} کیلوبایت%0Aمحل ذخیره: فضای ابری لیارا"
+            curl -s -X POST "https://api.kavenegar.com/v1/${KAVENEGAR_API_KEY}/sms/send.json" \
+              -d "receptor=${ADMIN_PHONE}" \
+              -d "message=${MESSAGE}"
+            echo "Success SMS notification sent to ${ADMIN_PHONE}"
+          else
+            echo "KAVENEGAR_API_KEY or ADMIN_PHONE is not configured. Skipping SMS."
+          fi
+
+      - name: Send Failure SMS Alert via Kavenegar
+        if: failure()
+        env:
+          KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
+          ADMIN_PHONE: ${{ secrets.ADMIN_PHONE }}
+        run: |
+          if [ -n "${KAVENEGAR_API_KEY}" ] && [ -n "${ADMIN_PHONE}" ]; then
+            MESSAGE="هشدار سامانه اُدار: پشتیبان‌گیری شبانه دیتابیس با خطا مواجه شد! لطفاً بخش GitHub Actions را بررسی کنید."
+            curl -s -X POST "https://api.kavenegar.com/v1/${KAVENEGAR_API_KEY}/sms/send.json" \
+              -d "receptor=${ADMIN_PHONE}" \
+              -d "message=${MESSAGE}"
+            echo "Failure SMS alert sent to ${ADMIN_PHONE}"
+          fi
