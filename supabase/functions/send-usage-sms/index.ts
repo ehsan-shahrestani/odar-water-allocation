@@ -1,11 +1,11 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
 const JSON_HEADERS = {
-  "Content-Type": "application/json; charset=utf-8",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  'Content-Type': 'application/json; charset=utf-8',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 interface KavenegarResponse {
@@ -32,12 +32,12 @@ function jsonResponse(data: unknown, status = 200): Response {
 }
 
 function normalizeIranianMobile(phone: string): string | null {
-  const compact = phone.replace(/[\s\-()]/g, "");
+  const compact = phone.replace(/[\s\-()]/g, '');
   let localPhone = compact;
 
-  if (compact.startsWith("+98")) {
+  if (compact.startsWith('+98')) {
     localPhone = `0${compact.slice(3)}`;
-  } else if (compact.startsWith("0098")) {
+  } else if (compact.startsWith('0098')) {
     localPhone = `0${compact.slice(4)}`;
   } else if (/^98\d{10}$/.test(compact)) {
     localPhone = `0${compact.slice(2)}`;
@@ -50,40 +50,40 @@ function normalizeIranianMobile(phone: string): string | null {
 
 function toPersianDigits(value: number | string): string {
   const str = String(value);
-  return str.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[parseInt(d, 10)] ?? d);
+  return str.replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d, 10)] ?? d);
 }
 
 function formatShamsiDateTime(date: Date = new Date()): string {
-  const formatter = new Intl.DateTimeFormat("fa-IR", {
-    timeZone: "Asia/Tehran",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
+  const formatter = new Intl.DateTimeFormat('fa-IR', {
+    timeZone: 'Asia/Tehran',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
     hour12: false,
   });
-  return formatter.format(date).replace(",", " -");
+  return formatter.format(date).replace(',', ' -');
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: JSON_HEADERS });
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: JSON_HEADERS });
   }
 
-  if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405);
+  if (req.method !== 'POST') {
+    return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
-  const apiKey = Deno.env.get("KAVENEGAR_API_KEY")?.trim();
-  const configuredSender = Deno.env.get("KAVENEGAR_SENDER")?.trim();
-  const configuredTemplate = Deno.env.get("KAVENEGAR_TEMPLATE_USAGE")?.trim();
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const apiKey = Deno.env.get('KAVENEGAR_API_KEY')?.trim();
+  const configuredSender = Deno.env.get('KAVENEGAR_SENDER')?.trim();
+  const configuredTemplate = Deno.env.get('KAVENEGAR_TEMPLATE_USAGE')?.trim();
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
   if (!apiKey) {
-    console.error("KAVENEGAR_API_KEY is not configured");
-    return jsonResponse({ error: "کلید وب‌سرویس پیامک کاوه‌نگار تنظیم نشده است." }, 500);
+    console.error('KAVENEGAR_API_KEY is not configured');
+    return jsonResponse({ error: 'کلید وب‌سرویس پیامک کاوه‌نگار تنظیم نشده است.' }, 500);
   }
 
   try {
@@ -92,7 +92,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Diagnostics: Check message status
     if (body.checkMessageId) {
       const statusRes = await fetch(
-        `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/sms/status.json?messageid=${encodeURIComponent(body.checkMessageId)}`
+        `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/sms/status.json?messageid=${encodeURIComponent(body.checkMessageId)}`,
       );
       const statusJson = await statusRes.json();
       return jsonResponse({ statusCheck: statusJson });
@@ -101,7 +101,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Diagnostics: Check account config
     if (body.getAccountInfo) {
       const infoRes = await fetch(
-        `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/account/config.json`
+        `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/account/config.json`,
       );
       const infoJson = await infoRes.json();
       return jsonResponse({ accountConfig: infoJson });
@@ -110,7 +110,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Diagnostics: Check outbox
     if (body.getOutbox) {
       const outboxRes = await fetch(
-        `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/sms/latestoutbox.json?pagesize=10`
+        `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/sms/latestoutbox.json?pagesize=10`,
       );
       const outboxJson = await outboxRes.json();
       return jsonResponse({ outbox: outboxJson });
@@ -119,31 +119,49 @@ Deno.serve(async (req: Request): Promise<Response> => {
     let receptor = body.phone ? normalizeIranianMobile(String(body.phone)) : null;
     let wellId = body.wellId ? String(body.wellId).trim() : null;
     let farmerName: string | null = body.farmerName ? String(body.farmerName).trim() : null;
-    const consumedHours = typeof body.consumedHours === "number" ? body.consumedHours : parseFloat(body.consumedHours || "0");
-    let remainingHours = typeof body.remainingHours === "number" ? body.remainingHours : parseFloat(body.remainingHours || "0");
+    const consumedHours =
+      typeof body.consumedHours === 'number'
+        ? body.consumedHours
+        : parseFloat(body.consumedHours || '0');
+    let remainingHours =
+      typeof body.remainingHours === 'number'
+        ? body.remainingHours
+        : parseFloat(body.remainingHours || '0');
     const sender = body.sender || configuredSender;
     const template = body.template || configuredTemplate;
 
     // Lookup missing wellId, phone, farmerName, or remainingHours from database using allocationId
-    if ((!wellId || !receptor || isNaN(remainingHours) || !farmerName) && body.allocationId && supabaseUrl && serviceRoleKey) {
+    if (
+      (!wellId || !receptor || isNaN(remainingHours) || !farmerName) &&
+      body.allocationId &&
+      supabaseUrl &&
+      serviceRoleKey
+    ) {
       const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
       const { data: alloc, error: allocError } = await supabaseAdmin
-        .from("water_allocations")
-        .select(`
+        .from('water_allocations')
+        .select(
+          `
           id,
           allocated_hours,
           water_years(well_id),
           well_farmers(
             well_id,
+            display_name,
             profiles(phone, full_name)
           ),
           water_usages(consumed_hours)
-        `)
-        .eq("id", body.allocationId)
+        `,
+        )
+        .eq('id', body.allocationId)
         .single();
 
       if (!allocError && alloc) {
-        const rawWf = alloc.well_farmers as unknown as { well_id?: string; profiles?: { phone?: string; full_name?: string } } | null;
+        const rawWf = alloc.well_farmers as unknown as {
+          well_id?: string;
+          display_name?: string | null;
+          profiles?: { phone?: string; full_name?: string };
+        } | null;
         const rawWy = alloc.water_years as unknown as { well_id?: string } | null;
 
         if (!wellId) {
@@ -151,8 +169,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
         }
 
         const farmerProfile = rawWf?.profiles;
-        if (!farmerName && farmerProfile?.full_name) {
-          farmerName = farmerProfile.full_name;
+        if (!farmerName) {
+          farmerName = rawWf?.display_name?.trim() || farmerProfile?.full_name || null;
         }
         if (!receptor && farmerProfile?.phone) {
           receptor = normalizeIranianMobile(farmerProfile.phone);
@@ -168,11 +186,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     if (!receptor) {
-      return jsonResponse({ error: "شماره موبایل گیرنده پیامک نامعتبر یا یافت نشد." }, 400);
+      return jsonResponse({ error: 'شماره موبایل گیرنده پیامک نامعتبر یا یافت نشد.' }, 400);
     }
 
     if (isNaN(consumedHours) || consumedHours <= 0) {
-      return jsonResponse({ error: "میزان ساعت مصرف نامعتبر است." }, 400);
+      return jsonResponse({ error: 'میزان ساعت مصرف نامعتبر است.' }, 400);
+    }
+
+    if (remainingHours < 0) {
+      return jsonResponse({ error: 'میزان ساعت مصرف نمی‌تواند بیشتر از سهمیه باقیمانده باشد.' }, 400);
     }
 
     const shamsiDate = formatShamsiDateTime(new Date());
@@ -184,11 +206,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // مانده  120
     // تاریخ و ساعت شمسی
     const message = [
-      "سامانه اودار",
+      'سامانه اودار',
       `-${toPersianDigits(consumedHours)} ساعت`,
       `مانده  ${toPersianDigits(remainingHours)}`,
       shamsiDate,
-    ].join("\n");
+    ].join('\n');
 
     const form = new URLSearchParams({
       receptor,
@@ -196,14 +218,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
     });
 
     if (sender) {
-      form.set("sender", sender);
+      form.set('sender', sender);
     }
 
     const endpoint = `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/sms/send.json`;
 
     const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: form,
       signal: AbortSignal.timeout(10_000),
     });
@@ -217,15 +239,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const status = kavenegarData?.return?.status;
     if (!response.ok || (status !== 200 && status !== 201)) {
-      console.error("Kavenegar SMS send failed", {
+      console.error('Kavenegar SMS send failed', {
         httpStatus: response.status,
         kavenegarStatus: status,
         message: kavenegarData?.return?.message,
       });
-      return jsonResponse({
-        error: `خطا در ارسال پیامک: ${kavenegarData?.return?.message || "خطای نامشخص سرویس پیامک"}`,
-        kavenegarStatus: status,
-      }, 502);
+      return jsonResponse(
+        {
+          error: `خطا در ارسال پیامک: ${kavenegarData?.return?.message || 'خطای نامشخص سرویس پیامک'}`,
+          kavenegarStatus: status,
+        },
+        502,
+      );
     }
 
     const entry = kavenegarData?.entries?.[0];
@@ -233,27 +258,35 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     // Check delivery rejection due to blacklist
     if (entryStatus === 14) {
-      return jsonResponse({
-        success: false,
-        blocked: true,
-        error: "پیامک ارسال نشد: شماره گیرنده در لیست سیاه مخابراتی (عدم تمایل به دریافت پیامک‌های تبلیغاتی) قرار دارد. برای این شماره‌ها باید از خط خدماتی استفاده شود.",
-        entry,
-        smsText: message,
-      }, 200);
+      return jsonResponse(
+        {
+          success: false,
+          blocked: true,
+          error:
+            'پیامک ارسال نشد: شماره گیرنده در لیست سیاه مخابراتی (عدم تمایل به دریافت پیامک‌های تبلیغاتی) قرار دارد. برای این شماره‌ها باید از خط خدماتی استفاده شود.',
+          entry,
+          smsText: message,
+        },
+        200,
+      );
     }
 
     if (entryStatus === 13) {
-      return jsonResponse({
-        success: false,
-        blocked: true,
-        error: "پیامک توسط اپراتور لغو شد (احتمالاً به دلیل قرار داشتن خط گیرنده در بلک‌لیست پیامک تبلیغاتی).",
-        entry,
-        smsText: message,
-      }, 200);
+      return jsonResponse(
+        {
+          success: false,
+          blocked: true,
+          error:
+            'پیامک توسط اپراتور لغو شد (احتمالاً به دلیل قرار داشتن خط گیرنده در بلک‌لیست پیامک تبلیغاتی).',
+          entry,
+          smsText: message,
+        },
+        200,
+      );
     }
 
     // Extract cost in Rials from Kavenegar entry
-    const cost = typeof entry?.cost === "number" ? entry.cost : Number(entry?.cost || 0);
+    const cost = typeof entry?.cost === 'number' ? entry.cost : Number(entry?.cost || 0);
     const messageId = entry?.messageid ? String(entry.messageid) : null;
 
     // Record SMS expense for the well
@@ -261,32 +294,30 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (wellId && supabaseUrl && serviceRoleKey) {
       try {
         const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-        const { error: expenseError } = await supabaseAdmin
-          .from("well_expenses")
-          .insert({
-            well_id: wellId,
-            title: "هزینه سرویس پیامکی",
-            cost: cost,
-            expense_type: "sms",
-            recipient_phone: receptor,
-            recipient_name: farmerName,
-            message_id: messageId,
-            description: `پیامک کسر ${toPersianDigits(consumedHours)} ساعت مصرف آب (مانده: ${toPersianDigits(remainingHours)} ساعت)`,
-          });
+        const { error: expenseError } = await supabaseAdmin.from('well_expenses').insert({
+          well_id: wellId,
+          title: 'هزینه سرویس پیامکی',
+          cost: cost,
+          expense_type: 'sms',
+          recipient_phone: receptor,
+          recipient_name: farmerName,
+          message_id: messageId,
+          description: `پیامک کسر ${toPersianDigits(consumedHours)} ساعت مصرف آب (مانده: ${toPersianDigits(remainingHours)} ساعت)`,
+        });
 
         if (expenseError) {
-          console.error("Failed to record well expense for SMS:", expenseError);
+          console.error('Failed to record well expense for SMS:', expenseError);
         } else {
           expenseRecorded = true;
         }
       } catch (expErr) {
-        console.error("Error inserting well expense:", expErr);
+        console.error('Error inserting well expense:', expErr);
       }
     }
 
     return jsonResponse({
       success: true,
-      message: "پیامک با موفقیت به مخابرات ارسال شد.",
+      message: 'پیامک با موفقیت به مخابرات ارسال شد.',
       messageId: entry?.messageid,
       cost,
       expenseRecorded,
@@ -294,9 +325,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
       smsText: message,
     });
   } catch (err: unknown) {
-    console.error("Error processing send-usage-sms", err);
-    return jsonResponse({
-      error: err instanceof Error ? err.message : "خطای ناشناخته در ارسال پیامک",
-    }, 500);
+    console.error('Error processing send-usage-sms', err);
+    return jsonResponse(
+      {
+        error: err instanceof Error ? err.message : 'خطای ناشناخته در ارسال پیامک',
+      },
+      500,
+    );
   }
 });

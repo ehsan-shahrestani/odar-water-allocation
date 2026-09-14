@@ -182,13 +182,20 @@ export class FarmerDetailComponent implements OnInit {
       return;
     }
 
+    if (hours > detail.remainingHours) {
+      const msg = `میزان مصرف (${faNumber(hours)} ساعت) نمی‌تواند بیشتر از باقیمانده سهمیه (${faNumber(detail.remainingHours)} ساعت) باشد.`;
+      this.modalError.set(msg);
+      toast.error(msg);
+      return;
+    }
+
     const repId = this.auth.currentProfile()?.id;
     if (!repId) return;
 
     this.submitting.set(true);
     this.modalError.set('');
 
-    const newRemaining = Math.max(0, Number((detail.remainingHours - hours).toFixed(2)));
+    const newRemaining = Number((detail.remainingHours - hours).toFixed(2));
 
     try {
       const result = await this.portalData.recordWaterUsage({

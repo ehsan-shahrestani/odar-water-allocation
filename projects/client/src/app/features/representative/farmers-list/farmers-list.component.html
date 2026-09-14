@@ -1,0 +1,483 @@
+<div class="farmers-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <span>لیست کشاورزان</span>
+        <span class="count-pill">{{ number(filteredFarmers().length) }} نفر</span>
+      </h1>
+      <p class="page-desc">مدیریت مشخصات کشاورزان، سهمیه‌های سال آبی جاری و ثبت کارکرد آب</p>
+    </div>
+
+    <div class="header-actions">
+      <button
+        type="button"
+        class="btn-primary"
+        (click)="openAddFarmerModal()"
+      >
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        <span>افزودن کشاورز جدید</span>
+      </button>
+
+      <button
+        type="button"
+        class="btn-secondary"
+        (click)="openRecordUsageModal()"
+      >
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>ثبت کارکرد</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Search & Filter Controls -->
+  <div class="search-bar">
+    <div class="relative w-full sm:max-w-md">
+      <input
+        type="search"
+        class="search-input"
+        placeholder="جستجوی نام یا شماره تماس کشاورز..."
+        [value]="searchQuery()"
+        (input)="searchQuery.set($any($event.target).value)"
+        aria-label="جستجوی کشاورزان"
+      />
+      <div class="search-icon-wrapper" aria-hidden="true">
+        <svg class="w-4 h-4 text-stone-400" viewBox="0 0 20 20" fill="currentColor">
+          <path
+            fill-rule="evenodd"
+            d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </div>
+      @if (searchQuery()) {
+        <button
+          type="button"
+          class="clear-search-btn"
+          (click)="searchQuery.set('')"
+          aria-label="پاک کردن جستجو"
+        >
+          ×
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>در حال بارگذاری اطلاعات کشاورزان...</p>
+    </div>
+  } @else if (error()) {
+    <div class="error-banner" role="alert">
+      <span>{{ error() }}</span>
+      <button app-button variant="secondary" (click)="loadData()">تلاش مجدد</button>
+    </div>
+  } @else if (filteredFarmers().length === 0) {
+    <div class="empty-state-box">
+      @if (searchQuery()) {
+        <p>کشاورزی با عبارت «{{ searchQuery() }}» یافت نشد.</p>
+        <button type="button" class="btn-link" (click)="searchQuery.set('')">
+          مشاهده تمام کشاورزان
+        </button>
+      } @else {
+        <p>هنوز کشاورزی به این چاه متصل نشده است.</p>
+        <button type="button" class="btn-primary mt-3" (click)="openAddFarmerModal()">
+          افزودن اولین کشاورز
+        </button>
+      }
+    </div>
+  } @else {
+    <!-- 1. Desktop Table View (>= 768px) -->
+    <div class="table-card desktop-table-view">
+      <div class="table-responsive-wrapper">
+        <table class="data-table" aria-label="جدول اطلاعات و سهمیه کشاورزان">
+          <thead>
+            <tr>
+              <th scope="col">نام کشاورز</th>
+              <th scope="col">شماره تماس</th>
+              <th scope="col">سهمیه مصوب</th>
+              <th scope="col">مصرف‌شده</th>
+              <th scope="col">باقی‌مانده</th>
+              <th scope="col">وضعیت مصرف</th>
+              <th scope="col">عملیات</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (farmer of filteredFarmers(); track farmer.id) {
+              <tr class="table-row">
+                <td class="td-farmer">
+                  <a [routerLink]="['/representative/farmers', farmer.id]" class="farmer-identity-cell" [title]="'مشاهده پرونده ' + farmer.name">
+                    <span class="avatar-cell" aria-hidden="true">{{ farmer.name.slice(0, 1) }}</span>
+                    <span class="name-cell">{{ farmer.name }}</span>
+                  </a>
+                </td>
+                <td class="td-phone" dir="ltr">{{ number(farmer.phone) }}</td>
+                <td class="td-num">
+                  @if (farmer.quotaHours > 0) {
+                    <span><strong>{{ number(farmer.quotaHours) }}</strong> <small class="unit">ساعت</small></span>
+                  } @else {
+                    <span class="text-stone-400 text-xs">تعریف‌نشده</span>
+                  }
+                </td>
+                <td class="td-num text-amber-700">
+                  <strong>{{ number(farmer.usedHours) }}</strong> <small class="unit">ساعت</small>
+                </td>
+                <td class="td-num">
+                  @if (farmer.quotaHours > 0) {
+                    <span
+                      class="remaining-tag"
+                      [class.positive]="farmer.remainingHours > 0"
+                      [class.negative]="farmer.remainingHours <= 0"
+                    >
+                      {{ number(farmer.remainingHours) }} ساعت
+                    </span>
+                  } @else {
+                    <span class="text-stone-400 text-xs">—</span>
+                  }
+                </td>
+                <td class="td-meter">
+                  @if (farmer.quotaHours > 0) {
+                    <div class="table-progress-box">
+                      <div
+                        class="table-progress-track"
+                        role="progressbar"
+                        [attr.aria-valuenow]="usagePercent(farmer)"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        [attr.aria-label]="'درصد مصرف ' + farmer.name"
+                      >
+                        <div
+                          class="table-progress-fill"
+                          [class]="'fill-' + usageLevel(farmer)"
+                          [style.width.%]="usagePercent(farmer)"
+                        ></div>
+                      </div>
+                      <span class="table-progress-val" [class]="'level-' + usageLevel(farmer)">
+                        {{ number(usagePercent(farmer)) }}٪
+                      </span>
+                    </div>
+                  } @else {
+                    <span class="text-stone-400 text-xs">بدون سهمیه</span>
+                  }
+                </td>
+                <td class="td-actions">
+                  <div class="row-actions">
+                    <button
+                      type="button"
+                      class="btn-action-record"
+                      (click)="openRecordUsageModal(farmer.id)"
+                      title="ثبت کارکرد برای این کشاورز"
+                      aria-label="ثبت کارکرد"
+                    >
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      <span>ثبت مصرف</span>
+                    </button>
+                    <a
+                      [routerLink]="['/representative/farmers', farmer.id]"
+                      class="btn-action-view"
+                      title="مشاهده پرونده کشاورز"
+                    >
+                      <span>پرونده</span>
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 2. Mobile Responsive Card View (< 768px) -->
+    <div class="mobile-farmers-list">
+      @for (farmer of filteredFarmers(); track farmer.id) {
+        <div class="farmer-mobile-card">
+          <!-- Top Row: Avatar, Name, Phone & Remaining Tag -->
+          <div class="fmc-top">
+            <a [routerLink]="['/representative/farmers', farmer.id]" class="fmc-identity">
+              <span class="fmc-avatar" aria-hidden="true">{{ farmer.name.slice(0, 1) }}</span>
+              <div class="fmc-meta">
+                <span class="fmc-name">{{ farmer.name }}</span>
+                <span class="fmc-phone" dir="ltr">{{ number(farmer.phone) }}</span>
+              </div>
+            </a>
+
+            @if (farmer.quotaHours > 0) {
+              <span
+                class="remaining-tag"
+                [class.positive]="farmer.remainingHours > 0"
+                [class.negative]="farmer.remainingHours <= 0"
+              >
+                مانده: {{ number(farmer.remainingHours) }} س
+              </span>
+            } @else {
+              <span class="text-stone-400 text-xs">بدون سهمیه</span>
+            }
+          </div>
+
+          <!-- Middle Row: Quota Stats Triad -->
+          <div class="fmc-stats-grid">
+            <div class="fmc-stat-item">
+              <span class="fmc-lbl">سهمیه کل</span>
+              <strong class="fmc-val">{{ farmer.quotaHours > 0 ? number(farmer.quotaHours) : '—' }}</strong>
+              <small class="fmc-unit">ساعت</small>
+            </div>
+            <div class="fmc-stat-item">
+              <span class="fmc-lbl">مصرف‌شده</span>
+              <strong class="fmc-val text-amber-700">{{ number(farmer.usedHours) }}</strong>
+              <small class="fmc-unit">ساعت</small>
+            </div>
+            <div class="fmc-stat-item">
+              <span class="fmc-lbl">درصد مصرف</span>
+              <strong class="fmc-val" [class]="'text-' + usageLevel(farmer)">
+                {{ number(usagePercent(farmer)) }}٪
+              </strong>
+              <small class="fmc-unit">سهمیه</small>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          @if (farmer.quotaHours > 0) {
+            <div class="fmc-bar-track">
+              <div
+                class="fmc-bar-fill"
+                [class]="'fill-' + usageLevel(farmer)"
+                [style.width.%]="usagePercent(farmer)"
+              ></div>
+            </div>
+          }
+
+          <!-- Action Buttons -->
+          <div class="fmc-actions-row">
+            <button
+              type="button"
+              class="fmc-btn-record"
+              (click)="openRecordUsageModal(farmer.id)"
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              <span>ثبت مصرف</span>
+            </button>
+            <a
+              [routerLink]="['/representative/farmers', farmer.id]"
+              class="fmc-btn-profile"
+            >
+              <span>مشاهده پرونده</span>
+              <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ==================== MODAL: ADD FARMER ==================== -->
+  @if (showAddFarmerModal()) {
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-add-farmer-title">
+      <button
+        type="button"
+        class="modal-overlay"
+        (click)="closeAddFarmerModal()"
+        aria-label="بستن پنجره"
+      ></button>
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h2 id="modal-add-farmer-title" class="modal-title">افزودن کشاورز جدید به چاه</h2>
+          <button
+            type="button"
+            class="modal-close"
+            (click)="closeAddFarmerModal()"
+            aria-label="بستن"
+          >
+            ×
+          </button>
+        </div>
+
+        @if (modalError()) {
+          <div class="modal-alert" role="alert">{{ modalError() }}</div>
+        }
+
+        <form (submit)="$event.preventDefault(); submitAddFarmer()" class="modal-form">
+          <div class="form-group">
+            <label for="add-farmer-name" class="form-label">نام و نام خانوادگی کشاورز *</label>
+            <input
+              id="add-farmer-name"
+              type="text"
+              class="form-input"
+              placeholder="مثال: علی محمدی"
+              [formField]="addFarmerForm.displayName"
+              [attr.aria-invalid]="addFarmerForm.displayName().invalid()"
+              aria-describedby="add-farmer-name-error"
+            />
+            @if (addFarmerForm.displayName().touched() && addFarmerForm.displayName().invalid()) {
+              <small id="add-farmer-name-error" class="field-error" role="alert">
+                {{ addFarmerForm.displayName().errors()[0]?.message }}
+              </small>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="add-farmer-phone" class="form-label">شماره موبایل کشاورز *</label>
+            <input
+              id="add-farmer-phone"
+              type="tel"
+              dir="ltr"
+              inputmode="tel"
+              class="form-input text-left"
+              autocomplete="tel"
+              placeholder="09121234567"
+              [formField]="addFarmerForm.phone"
+              [attr.aria-invalid]="addFarmerForm.phone().invalid()"
+              aria-describedby="add-farmer-phone-error"
+            />
+            @if (addFarmerForm.phone().touched() && addFarmerForm.phone().invalid()) {
+              <small id="add-farmer-phone-error" class="field-error" role="alert">
+                {{ addFarmerForm.phone().errors()[0]?.message }}
+              </small>
+            }
+          </div>
+
+          @if (dashboard()?.waterYear) {
+            <div class="form-group">
+              <label for="add-quota-input" class="form-label">
+                سهمیه سال آبی جاری (ساعت - اختیاری)
+              </label>
+              <input
+                id="add-quota-input"
+                type="text"
+                inputmode="decimal"
+                class="form-input"
+                placeholder="مثال: ۱۲۰"
+                [formField]="addFarmerForm.quota"
+                [attr.aria-invalid]="addFarmerForm.quota().invalid()"
+              />
+              @if (addFarmerForm.quota().touched() && addFarmerForm.quota().invalid()) {
+                <small class="field-error" role="alert">
+                  {{ addFarmerForm.quota().errors()[0]?.message }}
+                </small>
+              }
+            </div>
+          }
+
+          <div class="modal-actions mt-4">
+            <button app-button type="submit" [disabled]="submitting() || addFarmerForm().invalid()">
+              {{ submitting() ? 'در حال ثبت...' : 'افزودن کشاورز' }}
+            </button>
+            <button
+              app-button
+              type="button"
+              variant="secondary"
+              (click)="closeAddFarmerModal()"
+              [disabled]="submitting()"
+            >
+              انصراف
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- ==================== MODAL: RECORD USAGE ==================== -->
+  @if (showUsageModal()) {
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-usage-title">
+      <button
+        type="button"
+        class="modal-overlay"
+        (click)="closeUsageModal()"
+        aria-label="بستن پنجره"
+      ></button>
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h2 id="modal-usage-title" class="modal-title">ثبت کارکرد آب</h2>
+          <button type="button" class="modal-close" (click)="closeUsageModal()" aria-label="بستن">
+            ×
+          </button>
+        </div>
+
+        @if (modalError()) {
+          <div class="modal-alert" role="alert">{{ modalError() }}</div>
+        }
+
+        <form (submit)="$event.preventDefault(); submitUsage()" class="modal-form">
+          <div class="form-group">
+            <label for="usage-farmer-select" class="form-label">انتخاب کشاورز *</label>
+            <select
+              id="usage-farmer-select"
+              class="form-input"
+              [value]="selectedFarmerForUsage()"
+              (change)="selectedFarmerForUsage.set($any($event.target).value)"
+              required
+            >
+              <option value="">-- انتخاب کشاورز --</option>
+              @for (farmer of dashboard()?.farmers; track farmer.id) {
+                <option [value]="farmer.id">
+                  {{ farmer.name }} (باقی‌مانده: {{ number(farmer.remainingHours) }} ساعت)
+                </option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="usage-hours-input" class="form-label">میزان مصرف (ساعت) *</label>
+            <input
+              id="usage-hours-input"
+              type="text"
+              inputmode="decimal"
+              class="form-input"
+              placeholder="مثال: ۸"
+              [value]="usageHours()"
+              (input)="usageHours.set($any($event.target).value)"
+              required
+            />
+            @if (selectedFarmerUsageRemaining() !== null) {
+              <small class="form-hint">
+                حداکثر مجاز برای این کشاورز: <strong>{{ number(selectedFarmerUsageRemaining()) }} ساعت</strong>
+              </small>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="usage-desc-input" class="form-label">توضیحات (اختیاری)</label>
+            <input
+              id="usage-desc-input"
+              type="text"
+              class="form-input"
+              placeholder="مثال: دور آبیاری اول گندم"
+              [value]="usageDesc()"
+              (input)="usageDesc.set($any($event.target).value)"
+            />
+          </div>
+
+          <div class="modal-actions mt-4">
+            <button app-button type="submit" [disabled]="submitting() || !selectedFarmerForUsage()">
+              {{ submitting() ? 'در حال ثبت...' : 'ثبت کارکرد' }}
+            </button>
+            <button
+              app-button
+              type="button"
+              variant="secondary"
+              (click)="closeUsageModal()"
+              [disabled]="submitting()"
+            >
+              انصراف
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>

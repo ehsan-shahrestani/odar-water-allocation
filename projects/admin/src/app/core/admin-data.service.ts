@@ -108,9 +108,7 @@ export class AdminDataService {
     let result = (data || []) as UserProfile[];
     if (params?.query) {
       const q = params.query.trim().toLowerCase();
-      result = result.filter(
-        (u) => u.full_name?.toLowerCase().includes(q) || u.phone?.includes(q)
-      );
+      result = result.filter((u) => u.full_name?.toLowerCase().includes(q) || u.phone?.includes(q));
     }
     return result;
   }
@@ -121,7 +119,10 @@ export class AdminDataService {
     role: UserRole;
     is_active: boolean;
   }): Promise<UserProfile> {
-    const newId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `usr-${Date.now()}`;
+    const newId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `usr-${Date.now()}`;
     const { data, error } = await this.supabase
       .from('profiles')
       .insert({
@@ -140,10 +141,7 @@ export class AdminDataService {
     return data as UserProfile;
   }
 
-  async updateUser(
-    id: string,
-    updates: Partial<Omit<UserProfile, 'id'>>
-  ): Promise<UserProfile> {
+  async updateUser(id: string, updates: Partial<Omit<UserProfile, 'id'>>): Promise<UserProfile> {
     const { data, error } = await this.supabase
       .from('profiles')
       .update(updates)
@@ -178,10 +176,7 @@ export class AdminDataService {
     return defer(() => from(this.createUser(user)));
   }
 
-  updateUser$(
-    id: string,
-    updates: Partial<Omit<UserProfile, 'id'>>
-  ): Observable<UserProfile> {
+  updateUser$(id: string, updates: Partial<Omit<UserProfile, 'id'>>): Observable<UserProfile> {
     return defer(() => from(this.updateUser(id, updates)));
   }
 
@@ -197,7 +192,10 @@ export class AdminDataService {
       description: string | null;
       representative_id: string | null;
       created_at: string;
-      representative: { id: string; full_name: string; phone: string } | { id: string; full_name: string; phone: string }[] | null;
+      representative:
+        | { id: string; full_name: string; phone: string }
+        | { id: string; full_name: string; phone: string }[]
+        | null;
       well_farmers?: { id: string }[];
       water_years?: { id: string; description: string; start_date: string; end_date: string }[];
     }
@@ -214,7 +212,7 @@ export class AdminDataService {
         representative:profiles!wells_representative_id_fkey(id, full_name, phone),
         well_farmers(id),
         water_years(id, description, start_date, end_date)
-      `
+      `,
       )
       .order('created_at', { ascending: false });
 
@@ -243,9 +241,7 @@ export class AdminDataService {
     if (queryStr) {
       const q = queryStr.trim().toLowerCase();
       wells = wells.filter(
-        (w) =>
-          w.name.toLowerCase().includes(q) ||
-          w.representative_name?.toLowerCase().includes(q)
+        (w) => w.name.toLowerCase().includes(q) || w.representative_name?.toLowerCase().includes(q),
       );
     }
     return wells;
@@ -258,7 +254,10 @@ export class AdminDataService {
       description: string | null;
       representative_id: string | null;
       created_at: string;
-      representative: { id: string; full_name: string; phone: string } | { id: string; full_name: string; phone: string }[] | null;
+      representative:
+        | { id: string; full_name: string; phone: string }
+        | { id: string; full_name: string; phone: string }[]
+        | null;
       well_farmers?: { id: string }[];
       water_years?: { id: string; description: string; start_date: string; end_date: string }[];
     }
@@ -275,7 +274,7 @@ export class AdminDataService {
         representative:profiles!wells_representative_id_fkey(id, full_name, phone),
         well_farmers(id),
         water_years(id, description, start_date, end_date)
-      `
+      `,
       )
       .eq('id', id)
       .single();
@@ -314,13 +313,15 @@ export class AdminDataService {
         description: well.description?.trim() || null,
         representative_id: well.representative_id || null,
       })
-      .select(`
+      .select(
+        `
         id,
         name,
         description,
         representative_id,
         created_at
-      `)
+      `,
+      )
       .single();
 
     if (error || !data) {
@@ -343,22 +344,16 @@ export class AdminDataService {
       name?: string;
       description?: string | null;
       representative_id?: string | null;
-    }
+    },
   ): Promise<void> {
-    const { error } = await this.supabase
-      .from('wells')
-      .update(updates)
-      .eq('id', id);
+    const { error } = await this.supabase.from('wells').update(updates).eq('id', id);
 
     if (error) {
       throw new Error(`خطا در ویرایش چاه: ${error.message}`);
     }
   }
 
-  async changeWellRepresentative(
-    wellId: string,
-    representativeId: string | null
-  ): Promise<void> {
+  async changeWellRepresentative(wellId: string, representativeId: string | null): Promise<void> {
     await this.updateWell(wellId, { representative_id: representativeId });
   }
 
@@ -426,7 +421,10 @@ export class AdminDataService {
         description: wy.description.trim(),
         start_date: wy.start_date,
         end_date: wy.end_date,
-        hours_per_share: wy.hours_per_share !== undefined && wy.hours_per_share !== null ? wy.hours_per_share : null,
+        hours_per_share:
+          wy.hours_per_share !== undefined && wy.hours_per_share !== null
+            ? wy.hours_per_share
+            : null,
       })
       .select()
       .single();
@@ -443,8 +441,12 @@ export class AdminDataService {
       id: string;
       well_id: string;
       farmer_id: string;
+      display_name: string | null;
       created_at: string;
-      farmer: { id: string; full_name: string; phone: string } | { id: string; full_name: string; phone: string }[] | null;
+      farmer:
+        | { id: string; full_name: string; phone: string }
+        | { id: string; full_name: string; phone: string }[]
+        | null;
     }
 
     // Determine water year (either passed or latest for this well)
@@ -467,9 +469,10 @@ export class AdminDataService {
         id,
         well_id,
         farmer_id,
+        display_name,
         created_at,
         farmer:profiles!well_farmers_farmer_id_fkey(id, full_name, phone)
-      `
+      `,
       )
       .eq('well_id', wellId);
 
@@ -518,7 +521,7 @@ export class AdminDataService {
       const farmer = Array.isArray(row.farmer) ? row.farmer[0] : row.farmer;
       const alloc = allocMap.get(row.id);
       const allocatedHours = alloc ? alloc.allocated_hours : undefined;
-      const usedHours = alloc ? (usageMap.get(alloc.id) || 0) : undefined;
+      const usedHours = alloc ? usageMap.get(alloc.id) || 0 : undefined;
       const remainingHours =
         allocatedHours !== undefined
           ? Math.max(0, Math.round((allocatedHours - (usedHours || 0)) * 100) / 100)
@@ -528,7 +531,7 @@ export class AdminDataService {
         id: row.id,
         well_id: row.well_id,
         farmer_id: row.farmer_id,
-        farmer_name: farmer?.full_name || 'نامشخص',
+        farmer_name: row.display_name?.trim() || farmer?.full_name || 'نامشخص',
         farmer_phone: farmer?.phone || '',
         created_at: row.created_at,
         allocationId: alloc?.id || null,
@@ -542,7 +545,7 @@ export class AdminDataService {
   async addFarmerToWell(
     wellId: string,
     farmerId: string,
-    options?: { waterYearId?: string; allocatedHours?: number }
+    options?: { waterYearId?: string; allocatedHours?: number },
   ): Promise<AdminWellFarmer> {
     const { data, error } = await this.supabase
       .from('well_farmers')
@@ -555,9 +558,10 @@ export class AdminDataService {
         id,
         well_id,
         farmer_id,
+        display_name,
         created_at,
         farmer:profiles!well_farmers_farmer_id_fkey(id, full_name, phone)
-      `
+      `,
       )
       .single();
 
@@ -569,8 +573,12 @@ export class AdminDataService {
       id: string;
       well_id: string;
       farmer_id: string;
+      display_name: string | null;
       created_at: string;
-      farmer: { id: string; full_name: string; phone: string } | { id: string; full_name: string; phone: string }[] | null;
+      farmer:
+        | { id: string; full_name: string; phone: string }
+        | { id: string; full_name: string; phone: string }[]
+        | null;
     }
     const row = data as unknown as WellFarmerSingleResult;
     const farmer = Array.isArray(row.farmer) ? row.farmer[0] : row.farmer;
@@ -604,7 +612,7 @@ export class AdminDataService {
       id: row.id,
       well_id: row.well_id,
       farmer_id: row.farmer_id,
-      farmer_name: farmer?.full_name || 'کشاورز',
+      farmer_name: row.display_name?.trim() || farmer?.full_name || 'کشاورز',
       farmer_phone: farmer?.phone || '',
       created_at: row.created_at,
       allocationId,
@@ -617,7 +625,7 @@ export class AdminDataService {
   async setFarmerQuota(
     wellFarmerId: string,
     waterYearId: string,
-    allocatedHours: number
+    allocatedHours: number,
   ): Promise<{ id: string; allocatedHours: number }> {
     const { data, error } = await this.supabase
       .from('water_allocations')
@@ -627,7 +635,7 @@ export class AdminDataService {
           well_farmer_id: wellFarmerId,
           allocated_hours: allocatedHours,
         },
-        { onConflict: 'water_year_id,well_farmer_id' }
+        { onConflict: 'water_year_id,well_farmer_id' },
       )
       .select('id, allocated_hours')
       .single();
@@ -643,10 +651,7 @@ export class AdminDataService {
   }
 
   async removeFarmerFromWell(wellFarmerId: string): Promise<void> {
-    const { error } = await this.supabase
-      .from('well_farmers')
-      .delete()
-      .eq('id', wellFarmerId);
+    const { error } = await this.supabase.from('well_farmers').delete().eq('id', wellFarmerId);
 
     if (error) {
       throw new Error(`خطا در حذف کشاورز از چاه: ${error.message}`);
@@ -671,15 +676,12 @@ export class AdminDataService {
 
   updateWell$(
     id: string,
-    updates: Partial<Omit<AdminWell, 'id' | 'created_at' | 'farmer_count' | 'active_water_year'>>
+    updates: Partial<Omit<AdminWell, 'id' | 'created_at' | 'farmer_count' | 'active_water_year'>>,
   ): Observable<void> {
     return defer(() => from(this.updateWell(id, updates)));
   }
 
-  changeWellRepresentative$(
-    wellId: string,
-    representativeId: string | null
-  ): Observable<void> {
+  changeWellRepresentative$(wellId: string, representativeId: string | null): Observable<void> {
     return defer(() => from(this.changeWellRepresentative(wellId, representativeId)));
   }
 
@@ -714,7 +716,7 @@ export class AdminDataService {
   addFarmerToWell$(
     wellId: string,
     farmerId: string,
-    options?: { waterYearId?: string; allocatedHours?: number }
+    options?: { waterYearId?: string; allocatedHours?: number },
   ): Observable<AdminWellFarmer> {
     return defer(() => from(this.addFarmerToWell(wellId, farmerId, options)));
   }
@@ -722,7 +724,7 @@ export class AdminDataService {
   setFarmerQuota$(
     wellFarmerId: string,
     waterYearId: string,
-    allocatedHours: number
+    allocatedHours: number,
   ): Observable<{ id: string; allocatedHours: number }> {
     return defer(() => from(this.setFarmerQuota(wellFarmerId, waterYearId, allocatedHours)));
   }
@@ -735,7 +737,9 @@ export class AdminDataService {
   async getWellExpenses(wellId: string): Promise<AdminWellExpense[]> {
     const { data, error } = await this.supabase
       .from('well_expenses')
-      .select('id, well_id, title, cost, expense_type, recipient_phone, recipient_name, message_id, description, created_at')
+      .select(
+        'id, well_id, title, cost, expense_type, recipient_phone, recipient_name, message_id, description, created_at',
+      )
       .eq('well_id', wellId)
       .order('created_at', { ascending: false });
 

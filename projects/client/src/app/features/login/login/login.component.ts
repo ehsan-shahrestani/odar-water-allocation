@@ -1,7 +1,7 @@
 import { Component, ElementRef, afterNextRender, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
-import { AdminAuthError, AuthService, normalizeIranianMobile } from '../../../core/auth.service';
+import { AdminAuthError, AuthService, normalizeDigits, normalizeIranianMobile } from '../../../core/auth.service';
 import { ButtonComponent } from '../../../shared/button/button.component';
 
 @Component({
@@ -33,24 +33,35 @@ export class LoginComponent {
       } else if (currentRole === 'representative') {
         void this.router.navigateByUrl('/representative');
       } else {
-        this.phoneInput()?.nativeElement.focus();
+        const input = this.phoneInput()?.nativeElement;
+        if (input) {
+          if (input.value && !this.phone()) {
+            this.phone.set(input.value);
+          }
+          input.focus();
+        }
       }
     });
   }
 
   protected async requestOtp(): Promise<void> {
-    if (this.auth.isLoading()) return;
     this.error.set('');
 
-    const raw = this.phone().trim();
+    const inputElement = this.phoneInput()?.nativeElement;
+    const raw = (inputElement?.value || this.phone()).trim();
     const normalized = normalizeIranianMobile(raw);
 
     if (!normalized) {
       const msg = 'شماره موبایل معتبر نیست. لطفاً شماره ۱۱ رقمی (مانند ۰۹۱۲۳۴۵۶۷۸۹) وارد کنید.';
       this.error.set(msg);
       toast.error(msg);
-      this.phoneInput()?.nativeElement.focus();
+      inputElement?.focus();
       return;
+    }
+
+    this.phone.set(normalized);
+    if (inputElement && inputElement.value !== normalized) {
+      inputElement.value = normalized;
     }
 
     try {
@@ -73,7 +84,8 @@ export class LoginComponent {
     this.error.set('');
     this.isAdminAccount.set(false);
 
-    const code = this.otpCode().trim();
+    const rawCode = this.otpCode().trim();
+    const code = normalizeDigits(rawCode);
     if (!code || code.length !== 6) {
       const msg = 'کد تایید ۶ رقمی را وارد کنید.';
       this.error.set(msg);

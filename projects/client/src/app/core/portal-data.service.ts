@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { faNumber } from './mock-data';
 import { SupabaseService } from './supabase.service';
 
 function formatJalaliDateWords(dateStr: string | null | undefined): string {
@@ -64,6 +65,16 @@ export interface RepresentativeDashboardData {
     hoursPerShare?: number | null;
   } | null;
   farmers: RepresentativeFarmerItem[];
+}
+
+export interface AddFarmerToWellResult {
+  farmerId: string;
+  wellFarmerId: string;
+  allocationId: string | null;
+  phone: string;
+  displayName: string;
+  createdUser: boolean;
+  welcomeSmsSent?: boolean;
 }
 
 export interface WaterYearItem {
@@ -244,14 +255,17 @@ export class PortalDataService {
           start: formatJalaliDateWords(wy.start_date),
           end: formatJalaliDateWords(wy.end_date),
           description: wy.description,
-          hoursPerShare: wy.hours_per_share !== null && wy.hours_per_share !== undefined ? Number(wy.hours_per_share) : null,
+          hoursPerShare:
+            wy.hours_per_share !== null && wy.hours_per_share !== undefined
+              ? Number(wy.hours_per_share)
+              : null,
         }
       : null;
 
     // 3. Find farmers assigned to this well
     const { data: wfList, error: wfError } = await this.supabase
       .from('well_farmers')
-      .select('id, farmer_id, profiles ( id, full_name, phone )')
+      .select('id, farmer_id, display_name, profiles ( id, full_name, phone )')
       .eq('well_id', well.id);
 
     if (wfError || !wfList || wfList.length === 0) {
@@ -265,8 +279,12 @@ export class PortalDataService {
     // 4. Fetch allocation and usages for each farmer in this water year
     const farmerItems: RepresentativeFarmerItem[] = await Promise.all(
       wfList.map(async (item) => {
-        const profile = item.profiles as unknown as { id: string; full_name: string; phone: string } | null;
-        const name = profile?.full_name || 'کشاورز';
+        const profile = item.profiles as unknown as {
+          id: string;
+          full_name: string;
+          phone: string;
+        } | null;
+        const name = item.display_name?.trim() || profile?.full_name || 'کشاورز';
         const phone = profile?.phone || '';
         const farmerProfileId = profile?.id || item.farmer_id;
 
@@ -290,7 +308,7 @@ export class PortalDataService {
           .eq('well_farmer_id', item.id)
           .maybeSingle();
 
-        const quotaHours = alloc ? (Number(alloc.allocated_hours) || 0) : 0;
+        const quotaHours = alloc ? Number(alloc.allocated_hours) || 0 : 0;
         let usedHours = 0;
 
         if (alloc) {
@@ -314,7 +332,7 @@ export class PortalDataService {
           usedHours: Math.round(usedHours * 100) / 100,
           remainingHours: remaining,
         };
-      })
+      }),
     );
 
     return {
@@ -340,7 +358,7 @@ export class PortalDataService {
           well_farmer_id: params.wellFarmerId,
           allocated_hours: params.allocatedHours,
         },
-        { onConflict: 'water_year_id,well_farmer_id' }
+        { onConflict: 'water_year_id,well_farmer_id' },
       )
       .select('id')
       .single();
@@ -366,6 +384,26 @@ export class PortalDataService {
     remainingHours?: number;
     wellId?: string;
   }): Promise<{ smsSent: boolean; message?: string; cost?: number }> {
+    // Check remaining quota to prevent exceeding allocation
+    const { data: alloc, error: allocErr } = await this.supabase
+      .from('water_allocations')
+      .select('allocated_hours, water_usages(consumed_hours)')
+      .eq('id', params.allocationId)
+      .single();
+
+    if (!allocErr && alloc) {
+      const totalQuota = alloc.allocated_hours || 0;
+      const usages = (alloc.water_usages as Array<{ consumed_hours: number }>) || [];
+      const totalUsed = usages.reduce((sum, u) => sum + (u.consumed_hours || 0), 0);
+      const remaining = Number((totalQuota - totalUsed).toFixed(2));
+
+      if (params.consumedHours > remaining) {
+        throw new Error(
+          `میزان مصرف نمی‌تواند بیشتر از باقیمانده سهمیه (${faNumber(remaining)} ساعت) باشد.`,
+        );
+      }
+    }
+
     const { error } = await this.supabase.from('water_usages').insert({
       allocation_id: params.allocationId,
       consumed_hours: params.consumedHours,
@@ -395,7 +433,12 @@ export class PortalDataService {
         },
       });
 
-      const data = response.data as { success?: boolean; message?: string; error?: string; cost?: number } | null;
+      const data = response.data as {
+        success?: boolean;
+        message?: string;
+        error?: string;
+        cost?: number;
+      } | null;
       if (data?.success) {
         smsSent = true;
         smsMessage = data.message || 'پیامک ارسال شد';
@@ -412,40 +455,61 @@ export class PortalDataService {
   }
 
   /**
-   * Adds an existing farmer profile to the well and sets allocation if water year exists
+   * Creates or finds a farmer account and attaches it to this well through an authenticated
+   * Edge Function. The supplied display name belongs to the well membership, not the profile.
    */
   async addFarmerToWell(params: {
     wellId: string;
-    farmerId: string;
+    displayName: string;
+    phone: string;
     allocatedHours?: number;
     waterYearId?: string;
-  }): Promise<void> {
-    // 1. Insert into well_farmers
-    const { data: wf, error: wfError } = await this.supabase
-      .from('well_farmers')
-      .insert({
-        well_id: params.wellId,
-        farmer_id: params.farmerId,
-      })
-      .select('id')
-      .single();
+  }): Promise<AddFarmerToWellResult> {
+    const { data, error } = await this.supabase.functions.invoke('representative-add-farmer', {
+      body: {
+        wellId: params.wellId,
+        displayName: params.displayName.trim(),
+        phone: params.phone.trim(),
+        waterYearId: params.waterYearId,
+        allocatedHours: params.allocatedHours,
+      },
+    });
 
-    if (wfError || !wf) {
-      throw new Error(`خطا در افزودن کشاورز به چاه: ${wfError?.message || 'خطای نامشخص'}`);
-    }
-
-    // 2. If waterYearId and allocatedHours provided, create allocation
-    if (params.waterYearId && params.allocatedHours !== undefined && params.allocatedHours !== null && params.allocatedHours >= 0) {
-      const { error: allocError } = await this.supabase.from('water_allocations').insert({
-        water_year_id: params.waterYearId,
-        well_farmer_id: wf.id,
-        allocated_hours: params.allocatedHours,
-      });
-
-      if (allocError) {
-        throw new Error(`کشاورز اضافه شد اما در ثبت سهمیه خطایی رخ داد: ${allocError.message}`);
+    if (error) {
+      let message = error.message;
+      const context = (error as { context?: unknown }).context;
+      if (context instanceof Response) {
+        try {
+          const payload = (await context.clone().json()) as { error?: unknown };
+          if (typeof payload.error === 'string' && payload.error.trim()) {
+            message = payload.error;
+          }
+        } catch {
+          // Keep the SDK error message when the response is not JSON.
+        }
       }
+      throw new Error(message || 'خطا در افزودن کشاورز به چاه');
     }
+
+    const result = data as Partial<AddFarmerToWellResult> & { success?: boolean; error?: string };
+    if (
+      !result?.success ||
+      !result.farmerId ||
+      !result.wellFarmerId ||
+      !result.phone ||
+      !result.displayName
+    ) {
+      throw new Error(result?.error || 'پاسخ سرویس افزودن کشاورز معتبر نیست.');
+    }
+
+    return {
+      farmerId: result.farmerId,
+      wellFarmerId: result.wellFarmerId,
+      allocationId: result.allocationId ?? null,
+      phone: result.phone,
+      displayName: result.displayName,
+      createdUser: result.createdUser === true,
+    };
   }
 
   /**
@@ -468,7 +532,10 @@ export class PortalDataService {
       start: formatJalaliDateWords(wy.start_date),
       end: formatJalaliDateWords(wy.end_date),
       description: wy.description,
-      hoursPerShare: wy.hours_per_share !== null && wy.hours_per_share !== undefined ? Number(wy.hours_per_share) : null,
+      hoursPerShare:
+        wy.hours_per_share !== null && wy.hours_per_share !== undefined
+          ? Number(wy.hours_per_share)
+          : null,
       isActive: index === 0, // first item (latest created_at) is active
     }));
   }
@@ -496,7 +563,7 @@ export class PortalDataService {
     // 1. Find the well_farmer record for this farmer in this specific well
     const { data: wf, error: wfError } = await this.supabase
       .from('well_farmers')
-      .select('id, farmer_id, profiles ( id, full_name, phone )')
+      .select('id, farmer_id, display_name, profiles ( id, full_name, phone )')
       .eq('well_id', params.wellId)
       .eq('farmer_id', params.farmerId)
       .maybeSingle();
@@ -505,10 +572,14 @@ export class PortalDataService {
       return emptyResult;
     }
 
-    const profile = wf.profiles as unknown as { id: string; full_name: string; phone: string } | null;
+    const profile = wf.profiles as unknown as {
+      id: string;
+      full_name: string;
+      phone: string;
+    } | null;
     emptyResult.farmer = {
       id: profile?.id || params.farmerId,
-      name: profile?.full_name || 'کشاورز',
+      name: wf.display_name?.trim() || profile?.full_name || 'کشاورز',
       phone: profile?.phone || '',
     };
     emptyResult.wellFarmerId = wf.id;
@@ -555,33 +626,6 @@ export class PortalDataService {
   }
 
   /**
-   * Fetches available farmers who are not yet assigned to this well
-   */
-  async getAvailableFarmersForWell(wellId: string): Promise<Array<{ id: string; full_name: string; phone: string }>> {
-    // Get farmers already assigned
-    const { data: existing } = await this.supabase
-      .from('well_farmers')
-      .select('farmer_id')
-      .eq('well_id', wellId);
-
-    const existingIds = new Set((existing || []).map((e) => e.farmer_id));
-
-    // Get active farmer profiles
-    const { data: profiles, error } = await this.supabase
-      .from('profiles')
-      .select('id, full_name, phone')
-      .eq('role', 'farmer')
-      .eq('is_active', true)
-      .order('full_name', { ascending: true });
-
-    if (error) {
-      throw new Error(`خطا در دریافت لیست کشاورزان: ${error.message}`);
-    }
-
-    return (profiles || []).filter((p) => !existingIds.has(p.id));
-  }
-
-  /**
    * Creates a new water year for a well
    */
   async createWaterYear(params: {
@@ -598,7 +642,10 @@ export class PortalDataService {
         description: params.description.trim(),
         start_date: params.startDate,
         end_date: params.endDate,
-        hours_per_share: params.hoursPerShare !== undefined && params.hoursPerShare !== null ? params.hoursPerShare : null,
+        hours_per_share:
+          params.hoursPerShare !== undefined && params.hoursPerShare !== null
+            ? params.hoursPerShare
+            : null,
       })
       .select()
       .single();
@@ -613,7 +660,10 @@ export class PortalDataService {
       start: formatJalaliDateWords(data.start_date),
       end: formatJalaliDateWords(data.end_date),
       description: data.description,
-      hoursPerShare: data.hours_per_share !== null && data.hours_per_share !== undefined ? Number(data.hours_per_share) : null,
+      hoursPerShare:
+        data.hours_per_share !== null && data.hours_per_share !== undefined
+          ? Number(data.hours_per_share)
+          : null,
       isActive: true,
     };
   }

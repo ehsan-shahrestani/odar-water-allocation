@@ -56,3 +56,10 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Use the `providedIn: 'root'` option for singleton services
 - Prefer the `@Service` decorator over `@Injectable({providedIn: 'root'})` for new singleton services (Angular v22+)
 - Use the `inject()` function instead of constructor injection
+
+## UX and UI Design Principles
+
+- Keep forms and UI simple, clear, and direct.
+- Avoid verbose explanatory texts, unnecessary disclaimers, or excessive hints (توضیحات زیاد کاربر را بیشتر گیج می‌کند).
+- Use concise labels and placeholders without redundant explanatory paragraphs.
+

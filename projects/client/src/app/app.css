@@ -1,4 +1,22 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
   min-height: 100dvh;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  :host {
+    min-height: auto;
+    height: auto;
+    width: 100%;
+    justify-content: flex-start;
+    align-items: center;
+    margin: 0 auto;
+  }
+  :host:has(.login-wrapper) {
+    min-height: calc(100dvh - 64px);
+    justify-content: center;
+    align-items: center;
+  }
 }

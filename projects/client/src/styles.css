@@ -94,21 +94,79 @@ small {
 }
 .app-shell {
   width: 100%;
-  max-width: 390px;
   min-height: 100dvh;
   margin-inline: auto;
-  overflow: hidden;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 10% 3%, rgb(169 230 195 / 42%), transparent 24%),
     linear-gradient(180deg, #edf8f1 0, #f8fbf9 270px, #f5f8f6 100%);
   box-shadow: 0 0 70px rgb(6 55 34 / 12%);
 }
+
 .role-layout {
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
 .role-layout app-page-header {
   display: block;
   padding: 12px 12px 4px;
+}
+
+@media (min-width: 768px) {
+  body {
+    min-height: 100dvh;
+    background:
+      radial-gradient(circle at 8% 5%, rgb(169 230 195 / 45%), transparent 34%),
+      radial-gradient(circle at 92% 95%, rgb(169 230 195 / 35%), transparent 34%),
+      linear-gradient(180deg, #dfede3 0%, #eaf3ed 50%, #dfede4 100%);
+    padding: 32px 24px;
+    margin: 0;
+    box-sizing: border-box;
+  }
+  .app-shell {
+    width: min(88vw, 1540px);
+    min-height: auto;
+    height: auto;
+    max-height: none;
+    margin: 0 auto;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    overflow: visible;
+    display: block;
+  }
+  .app-shell:has(.login-wrapper) {
+    max-width: 450px;
+    height: auto;
+    margin: auto;
+    border-radius: 28px;
+    border: 1.5px solid rgba(190, 218, 202, 0.85);
+    box-shadow: 0 25px 70px -15px rgba(6, 55, 34, 0.16);
+    background: #ffffff;
+    overflow: hidden;
+  }
+  .rep-main-area .role-layout {
+    padding-bottom: 0 !important;
+  }
+  .role-layout {
+    padding-bottom: 2.5rem;
+  }
+  .role-layout app-page-header {
+    padding: 24px 32px 8px;
+  }
+  .role-layout .page-header {
+    min-height: 140px;
+    padding: 36px 36px 32px;
+  }
+  .page-content {
+    padding: 24px 32px 32px;
+  }
+  .bottom-nav {
+    bottom: 24px;
+    width: 320px;
+    border-radius: 999px;
+    padding: 8px 24px;
+  }
 }
 .role-layout .page-header {
   position: relative;

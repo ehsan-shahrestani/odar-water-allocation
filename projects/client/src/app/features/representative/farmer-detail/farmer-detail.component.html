@@ -1,168 +1,240 @@
-<div class="detail-page">
-  <!-- Back Navigation -->
-  <header class="detail-header">
-    <a routerLink=".." class="back-btn" aria-label="بازگشت به لیست کشاورزان">
-      <svg viewBox="0 0 20 20" fill="currentColor" class="back-icon">
-        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+<div class="farmer-detail-page">
+  <!-- Top Breadcrumb & Well Tag -->
+  <div class="detail-nav-bar">
+    <a routerLink=".." class="back-link" aria-label="بازگشت به لیست کشاورزان">
+      <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+        <path
+          fill-rule="evenodd"
+          d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+          clip-rule="evenodd"
+        />
       </svg>
-      <span>بازگشت</span>
+      <span>بازگشت به فهرست کشاورزان</span>
     </a>
-    <span class="well-name-badge">{{ wellName() }}</span>
-  </header>
+
+    @if (wellName()) {
+      <span class="well-badge">چاه: {{ wellName() }}</span>
+    }
+  </div>
 
   @if (loading() && !farmerDetail()) {
     <div class="loading-state">
       <div class="spinner" aria-hidden="true"></div>
-      <p>در حال بارگذاری...</p>
+      <p>در حال دریافت پرونده کشاورز...</p>
     </div>
   } @else if (error()) {
     <div class="error-banner" role="alert">
       <span>{{ error() }}</span>
-      <a routerLink=".." class="link-btn">بازگشت</a>
+      <a routerLink=".." class="error-link">بازگشت به لیست</a>
     </div>
   } @else {
-    <!-- Farmer Info Card -->
-    @if (farmerDetail(); as detail) {
-      <div class="farmer-info-card">
-        <div class="farmer-info-row">
-          <span class="farmer-avatar-lg" aria-hidden="true">
-            {{ detail.farmer.name.slice(0, 1) }}
-          </span>
-          <div class="farmer-info-text">
-            <h1 class="farmer-detail-name">{{ detail.farmer.name }}</h1>
-            <span class="farmer-detail-phone">{{ number(detail.farmer.phone) }}</span>
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- Water Year Tabs -->
-    @if (waterYears().length > 0) {
-      <div class="wy-tabs-wrapper" role="tablist" aria-label="سال‌های آبی">
-        <div class="wy-tabs-scroll">
-          @for (wy of waterYears(); track wy.id) {
-            <button
-              type="button"
-              role="tab"
-              class="wy-tab"
-              [class.active]="wy.id === selectedWaterYearId()"
-              [attr.aria-selected]="wy.id === selectedWaterYearId()"
-              (click)="selectWaterYear(wy.id)"
-            >
-              @if (wy.isActive) {
-                <span class="active-dot" aria-hidden="true"></span>
-              }
-              <span>{{ wy.name }}</span>
-            </button>
-          }
-        </div>
-      </div>
-    } @else {
-      <div class="no-wy-notice">
-        <p>هنوز سال آبی برای این چاه تعریف نشده است.</p>
-      </div>
-    }
-
-    <!-- Loading overlay when switching tabs -->
-    @if (loading()) {
-      <div class="loading-state compact">
-        <div class="spinner small" aria-hidden="true"></div>
-      </div>
-    } @else if (farmerDetail(); as detail) {
-      <!-- Quota Summary -->
-      <div class="quota-summary-card">
-        <div class="quota-row">
-          <div class="quota-item">
-            <span class="quota-label">سهمیه کل</span>
-            <span class="quota-value">{{ number(detail.quotaHours) }} <small>ساعت</small></span>
-          </div>
-          <div class="quota-item">
-            <span class="quota-label">مصرف‌شده</span>
-            <span class="quota-value text-amber">{{ number(detail.usedHours) }} <small>ساعت</small></span>
-          </div>
-          <div class="quota-item">
-            <span class="quota-label">باقی‌مانده</span>
-            <span class="quota-value" [class.text-emerald]="detail.remainingHours > 0" [class.text-rose]="detail.remainingHours <= 0">
-              {{ number(detail.remainingHours) }} <small>ساعت</small>
-            </span>
-          </div>
-        </div>
-
-        @if (detail.quotaHours > 0) {
-          <div class="quota-bar">
-            <div class="quota-bar-track" role="progressbar" [attr.aria-valuenow]="usagePercent()" aria-valuemin="0" aria-valuemax="100" aria-label="درصد مصرف">
-              <div class="quota-bar-fill" [class]="'fill-' + usageLevel()" [style.width.%]="usagePercent()"></div>
+    <div class="detail-layout-grid">
+      <!-- ==================== SIDEBAR: FARMER SUMMARY CARD ==================== -->
+      <aside class="detail-sidebar-col">
+        @if (farmerDetail(); as detail) {
+          <div class="farmer-summary-card">
+            <!-- 1. Profile Header -->
+            <div class="profile-header">
+              <div class="profile-avatar" aria-hidden="true">
+                {{ detail.farmer.name.slice(0, 1) }}
+              </div>
+              <div class="profile-info">
+                <h1 class="profile-name">{{ detail.farmer.name }}</h1>
+                <a [href]="'tel:' + detail.farmer.phone" class="profile-phone" dir="ltr">
+                  <svg class="w-3.5 h-3.5 text-stone-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                  </svg>
+                  <span>{{ number(detail.farmer.phone) }}</span>
+                </a>
+              </div>
             </div>
-            <span class="quota-bar-label" [class]="'level-' + usageLevel()">{{ number(usagePercent()) }}٪ مصرف</span>
-          </div>
-        }
 
-        @if (selectedWaterYear()?.hoursPerShare !== null && selectedWaterYear()?.hoursPerShare !== undefined) {
-          <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>مبنای سال آبی:</span>
-            <span class="font-semibold text-sky-850 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">
-              هر ساعت مالکیت = {{ number(selectedWaterYear()?.hoursPerShare) }} ساعت
-            </span>
-          </div>
-        }
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="detail-actions">
-        @if (selectedWaterYear()?.isActive) {
-          <button type="button" class="btn-primary-action" (click)="openUsageModal()" [disabled]="!detail.allocationId">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-            </svg>
-            <span>ثبت مصرف</span>
-          </button>
-        }
-        <button type="button" class="btn-secondary-action" (click)="openQuotaModal()">
-          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
-          </svg>
-          <span>ویرایش سهمیه</span>
-        </button>
-      </div>
-
-      <!-- Usages List -->
-      <section class="usages-section" aria-labelledby="usages-heading">
-        <h2 id="usages-heading" class="section-title">
-          <span>تاریخچه مصرف</span>
-          <span class="count-pill">{{ number(detail.usages.length) }}</span>
-        </h2>
-
-        @if (detail.usages.length === 0) {
-          <div class="empty-usages">
-            <p>در این سال آبی هنوز مصرفی ثبت نشده است.</p>
-          </div>
-        } @else {
-          <div class="usages-list">
-            @for (usage of detail.usages; track usage.id) {
-              <div class="usage-item">
-                <div class="usage-item-top">
-                  <span class="usage-date">{{ usage.date }}</span>
-                  <span class="usage-hours">{{ number(usage.hours) }} <small>ساعت</small></span>
+            <!-- 2. Quota & Consumption Box -->
+            <div class="quota-box">
+              <div class="quota-triad">
+                <div class="triad-col">
+                  <span class="triad-lbl">سهمیه کل</span>
+                  <strong class="triad-val">{{ number(detail.quotaHours) }}</strong>
+                  <span class="triad-unit">ساعت</span>
                 </div>
-                @if (usage.description) {
-                  <p class="usage-desc">{{ usage.description }}</p>
+
+                <div class="triad-col border-x">
+                  <span class="triad-lbl">مصرف‌شده</span>
+                  <strong class="triad-val text-amber-700">{{ number(detail.usedHours) }}</strong>
+                  <span class="triad-unit">ساعت</span>
+                </div>
+
+                <div class="triad-col">
+                  <span class="triad-lbl">باقی‌مانده</span>
+                  <strong
+                    class="triad-val"
+                    [class.text-emerald-700]="detail.remainingHours > 0"
+                    [class.text-rose-600]="detail.remainingHours <= 0"
+                  >
+                    {{ number(detail.remainingHours) }}
+                  </strong>
+                  <span class="triad-unit">ساعت</span>
+                </div>
+              </div>
+
+              <!-- Meter Progress -->
+              @if (detail.quotaHours > 0) {
+                <div class="progress-wrap">
+                  <div
+                    class="progress-track"
+                    role="progressbar"
+                    [attr.aria-valuenow]="usagePercent()"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-label="درصد مصرف"
+                  >
+                    <div
+                      class="progress-fill"
+                      [class]="'fill-' + usageLevel()"
+                      [style.width.%]="usagePercent()"
+                    ></div>
+                  </div>
+                  <div class="progress-meta">
+                    <span class="meta-label">میزان مصرف از سهمیه</span>
+                    <span class="meta-pct" [class]="'text-' + usageLevel()">
+                      {{ number(usagePercent()) }}٪
+                    </span>
+                  </div>
+                </div>
+              }
+
+              @if (
+                selectedWaterYear()?.hoursPerShare !== null &&
+                selectedWaterYear()?.hoursPerShare !== undefined
+              ) {
+                <div class="rate-note">
+                  <span>نرخ سال آبی:</span>
+                  <strong>هر ساعت مالکیت = {{ number(selectedWaterYear()?.hoursPerShare) }} ساعت آب</strong>
+                </div>
+              }
+            </div>
+
+            <!-- 3. Actions -->
+            <div class="card-actions">
+              @if (selectedWaterYear()?.isActive) {
+                <button
+                  type="button"
+                  class="btn-act-primary"
+                  (click)="openUsageModal()"
+                  [disabled]="!detail.allocationId"
+                >
+                  <svg class="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  <span>ثبت مصرف آب</span>
+                </button>
+              }
+
+              <button type="button" class="btn-act-secondary" (click)="openQuotaModal()">
+                <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
+                <span>ویرایش سهمیه</span>
+              </button>
+            </div>
+          </div>
+        }
+      </aside>
+
+      <!-- ==================== MAIN CONTENT: WATER YEARS & USAGES ==================== -->
+      <main class="detail-main-col">
+        <!-- Water Year Selector Pills -->
+        @if (waterYears().length > 0) {
+          <div class="wy-pills-row" role="tablist" aria-label="انتخاب سال آبی">
+            @for (wy of waterYears(); track wy.id) {
+              <button
+                type="button"
+                role="tab"
+                class="wy-pill"
+                [class.active]="wy.id === selectedWaterYearId()"
+                [attr.aria-selected]="wy.id === selectedWaterYearId()"
+                (click)="selectWaterYear(wy.id)"
+              >
+                @if (wy.isActive) {
+                  <span class="active-dot" aria-hidden="true"></span>
                 }
+                <span>{{ wy.name }}</span>
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Usages Table Card -->
+        @if (loading()) {
+          <div class="loading-state compact">
+            <div class="spinner small" aria-hidden="true"></div>
+          </div>
+        } @else if (farmerDetail(); as detail) {
+          <div class="usages-card">
+            <div class="usages-header">
+              <div class="flex items-center gap-2">
+                <h2 class="usages-title">تاریخچه مصرف</h2>
+                <span class="usages-count-pill">{{ number(detail.usages.length) }} نوبت</span>
+              </div>
+              <span class="usages-sub-year">
+                دوره: {{ selectedWaterYear()?.name || 'تعریف‌نشده' }}
+              </span>
+            </div>
+
+            @if (detail.usages.length === 0) {
+              <div class="empty-usages-box">
+                <svg class="w-10 h-10 text-stone-300 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p>در این سال آبی هنوز هیچ مصرفی برای این کشاورز ثبت نشده است.</p>
+              </div>
+            } @else {
+              <div class="table-container">
+                <table class="usages-table" aria-label="جدول تاریخچه مصرف">
+                  <thead>
+                    <tr>
+                      <th scope="col">تاریخ ثبت</th>
+                      <th scope="col">مدت مصرف</th>
+                      <th scope="col">توضیحات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (usage of detail.usages; track usage.id) {
+                      <tr>
+                        <td class="cell-date">{{ usage.date }}</td>
+                        <td class="cell-hours">
+                          <span class="hours-badge">
+                            <strong>{{ number(usage.hours) }}</strong> ساعت
+                          </span>
+                        </td>
+                        <td class="cell-desc">{{ usage.description || '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
               </div>
             }
           </div>
         }
-      </section>
-    }
+      </main>
+    </div>
   }
 
   <!-- ==================== MODAL: RECORD USAGE ==================== -->
   @if (showUsageModal()) {
     <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-usage-title">
-      <button type="button" class="modal-overlay" (click)="closeUsageModal()" aria-label="بستن پنجره"></button>
+      <button
+        type="button"
+        class="modal-overlay"
+        (click)="closeUsageModal()"
+        aria-label="بستن پنجره"
+      ></button>
       <div class="modal-dialog">
         <div class="modal-header">
           <h2 id="modal-usage-title" class="modal-title">ثبت مصرف آب</h2>
-          <button type="button" class="modal-close" (click)="closeUsageModal()" aria-label="بستن">×</button>
+          <button type="button" class="modal-close" (click)="closeUsageModal()" aria-label="بستن">
+            ×
+          </button>
         </div>
 
         @if (modalError()) {
@@ -171,7 +243,14 @@
 
         <form (submit)="$event.preventDefault(); submitUsage()" class="modal-form">
           <div class="form-group">
-            <label for="detail-usage-hours" class="form-label">مدت مصرف (ساعت) *</label>
+            <div class="flex items-center justify-between">
+              <label for="detail-usage-hours" class="form-label">مدت مصرف (ساعت) *</label>
+              @if (farmerDetail(); as d) {
+                <span class="text-xs text-stone-600 font-medium">
+                  حداکثر مجاز: <strong class="text-emerald-800">{{ number(d.remainingHours) }} ساعت</strong>
+                </span>
+              }
+            </div>
             <input
               id="detail-usage-hours"
               type="text"
@@ -182,7 +261,9 @@
               (input)="usageHours.set($any($event.target).value)"
               required
             />
-            <small class="form-hint">می‌توانید به صورت اعشاری (۲.۵) یا ساعت:دقیقه (۲:۳۰) وارد کنید.</small>
+            <small class="form-hint"
+              >می‌توانید به صورت اعشاری (۲.۵) یا ساعت:دقیقه (۲:۳۰) وارد کنید.</small
+            >
           </div>
 
           <div class="form-group">
@@ -201,7 +282,13 @@
             <button app-button type="submit" [disabled]="submitting()">
               {{ submitting() ? 'در حال ثبت...' : 'ثبت مصرف' }}
             </button>
-            <button app-button type="button" variant="secondary" (click)="closeUsageModal()" [disabled]="submitting()">
+            <button
+              app-button
+              type="button"
+              variant="secondary"
+              (click)="closeUsageModal()"
+              [disabled]="submitting()"
+            >
               انصراف
             </button>
           </div>
@@ -213,11 +300,18 @@
   <!-- ==================== MODAL: EDIT QUOTA ==================== -->
   @if (showQuotaModal()) {
     <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-quota-title">
-      <button type="button" class="modal-overlay" (click)="closeQuotaModal()" aria-label="بستن پنجره"></button>
+      <button
+        type="button"
+        class="modal-overlay"
+        (click)="closeQuotaModal()"
+        aria-label="بستن پنجره"
+      ></button>
       <div class="modal-dialog">
         <div class="modal-header">
           <h2 id="modal-quota-title" class="modal-title">ویرایش سهمیه</h2>
-          <button type="button" class="modal-close" (click)="closeQuotaModal()" aria-label="بستن">×</button>
+          <button type="button" class="modal-close" (click)="closeQuotaModal()" aria-label="بستن">
+            ×
+          </button>
         </div>
 
         <div class="farmer-summary-banner">
@@ -225,7 +319,10 @@
           <span class="wy-label">{{ selectedWaterYear()?.name }}</span>
         </div>
 
-        @if (selectedWaterYear()?.hoursPerShare !== null && selectedWaterYear()?.hoursPerShare !== undefined) {
+        @if (
+          selectedWaterYear()?.hoursPerShare !== null &&
+          selectedWaterYear()?.hoursPerShare !== undefined
+        ) {
           <div class="p-2.5 bg-sky-50 border border-sky-100 rounded-lg text-xs text-sky-850 flex items-center justify-between mb-3">
             <span>مبنای محاسبه سال آبی:</span>
             <strong>هر ساعت مالکیت = {{ number(selectedWaterYear()?.hoursPerShare) }} ساعت</strong>
@@ -255,7 +352,10 @@
               </small>
             }
 
-            @if (selectedWaterYear()?.hoursPerShare !== null && selectedWaterYear()?.hoursPerShare !== undefined) {
+            @if (
+              selectedWaterYear()?.hoursPerShare !== null &&
+              selectedWaterYear()?.hoursPerShare !== undefined
+            ) {
               <label class="flex items-center gap-2 text-xs text-slate-700 select-none cursor-pointer p-2.5 bg-slate-50 rounded-lg border border-slate-200 mt-2">
                 <input
                   type="checkbox"
@@ -272,7 +372,13 @@
             <button app-button type="submit" [disabled]="submitting()">
               {{ submitting() ? 'در حال ذخیره...' : 'ذخیره' }}
             </button>
-            <button app-button type="button" variant="secondary" (click)="closeQuotaModal()" [disabled]="submitting()">
+            <button
+              app-button
+              type="button"
+              variant="secondary"
+              (click)="closeQuotaModal()"
+              [disabled]="submitting()"
+            >
               انصراف
             </button>
           </div>

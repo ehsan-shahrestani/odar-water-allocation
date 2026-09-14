@@ -2,7 +2,12 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { User } from '@supabase/supabase-js';
 import { UserProfile } from './auth.model';
-import { AdminAuthError, AuthService } from './auth.service';
+import {
+  AdminAuthError,
+  AuthService,
+  getPhoneOtpErrorMessage,
+  normalizeIranianMobile,
+} from './auth.service';
 import { SupabaseService } from './supabase.service';
 
 describe('AuthService', () => {
@@ -17,9 +22,11 @@ describe('AuthService', () => {
   let profile: UserProfile | null;
   let credentialError: boolean;
   let profileQueryError: boolean;
+  let phoneOtpError: { code?: string; message: string; status?: number } | null;
   let auth: AuthService;
   let getSession: ReturnType<typeof vi.fn>;
   let signInWithPassword: ReturnType<typeof vi.fn>;
+  let signInWithOtp: ReturnType<typeof vi.fn>;
   let signOut: ReturnType<typeof vi.fn>;
   let onAuthStateChange: ReturnType<typeof vi.fn>;
   let unsubscribe: ReturnType<typeof vi.fn>;
@@ -30,10 +37,15 @@ describe('AuthService', () => {
     profile = activeAdmin;
     credentialError = false;
     profileQueryError = false;
+    phoneOtpError = null;
     getSession = vi.fn(async () => ({ data: { session: null }, error: null }));
     signInWithPassword = vi.fn(async () => ({
       data: { user: credentialError ? null : user, session: null },
       error: credentialError ? new Error('invalid credentials') : null,
+    }));
+    signInWithOtp = vi.fn(async () => ({
+      data: { messageId: null, user: null, session: null },
+      error: phoneOtpError,
     }));
     signOut = vi.fn(async () => ({ error: null }));
     unsubscribe = vi.fn();
@@ -46,7 +58,7 @@ describe('AuthService', () => {
     from = vi.fn(() => ({ select: vi.fn(() => ({ eq })) }));
     const supabaseStub = {
       client: {
-        auth: { getSession, signInWithPassword, signOut, onAuthStateChange },
+        auth: { getSession, signInWithOtp, signInWithPassword, signOut, onAuthStateChange },
         from,
       },
     };
@@ -92,6 +104,26 @@ describe('AuthService', () => {
       userMessage: 'ایمیل یا رمز عبور صحیح نیست.',
     } satisfies Partial<AdminAuthError>);
     expect(auth.isAuthenticated()).toBe(false);
+  });
+
+  it('normalizes the phone before requesting an OTP', async () => {
+    await auth.loginPhone('۰۹۹۰۵۹۱۳۸۵۲');
+
+    expect(signInWithOtp).toHaveBeenCalledWith({
+      phone: '+989905913852',
+    });
+  });
+
+  it('keeps provider failures private and returns an actionable Persian message', async () => {
+    phoneOtpError = {
+      code: 'unexpected_failure',
+      message: 'SMS provider rejected the message',
+      status: 500,
+    };
+
+    await expect(auth.loginPhone('09905913852')).rejects.toMatchObject({
+      userMessage: 'ارسال پیامک توسط سرویس پیامک انجام نشد. لطفاً دوباره تلاش کنید.',
+    } satisfies Partial<AdminAuthError>);
   });
 
   it.each([
@@ -145,5 +177,50 @@ describe('AuthService', () => {
     TestBed.resetTestingModule();
 
     expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+});
+
+describe('normalizeIranianMobile', () => {
+  it('normalizes standard 11-digit Iranian mobile numbers', () => {
+    expect(normalizeIranianMobile('09123456789')).toBe('09123456789');
+  });
+
+  it('normalizes Persian and Arabic digits', () => {
+    expect(normalizeIranianMobile('۰۹۱۲۳۴۵۶۷۸۹')).toBe('09123456789');
+    expect(normalizeIranianMobile('٠٩١٢٣٤٥٦٧٨٩')).toBe('09123456789');
+  });
+
+  it('normalizes +98 and 0098 prefixes', () => {
+    expect(normalizeIranianMobile('+989123456789')).toBe('09123456789');
+    expect(normalizeIranianMobile('00989123456789')).toBe('09123456789');
+    expect(normalizeIranianMobile('989123456789')).toBe('09123456789');
+  });
+
+  it('normalizes numbers without leading zero', () => {
+    expect(normalizeIranianMobile('9123456789')).toBe('09123456789');
+  });
+
+  it('handles invisible unicode marks, spaces, dashes and parentheses', () => {
+    expect(normalizeIranianMobile('\u200E09123456789')).toBe('09123456789');
+    expect(normalizeIranianMobile('\u200F09123456789\u200E')).toBe('09123456789');
+    expect(normalizeIranianMobile('0912-345-6789')).toBe('09123456789');
+    expect(normalizeIranianMobile('(+98) 912 345 6789')).toBe('09123456789');
+  });
+
+  it('returns null for invalid numbers or empty strings', () => {
+    expect(normalizeIranianMobile('')).toBeNull();
+    expect(normalizeIranianMobile('08123456789')).toBeNull();
+    expect(normalizeIranianMobile('0912345')).toBeNull();
+  });
+});
+
+describe('getPhoneOtpErrorMessage', () => {
+  it('returns specific messages for timeout and rate limiting', () => {
+    expect(getPhoneOtpErrorMessage({ code: 'hook_timeout', status: 500 })).toContain('به‌موقع پاسخ نداد');
+    expect(getPhoneOtpErrorMessage({ code: 'over_request_rate_limit', status: 429 })).toContain('بیش از حد مجاز');
+  });
+
+  it('does not expose unknown server messages', () => {
+    expect(getPhoneOtpErrorMessage({ message: 'internal provider secret' })).not.toContain('internal provider secret');
   });
 });

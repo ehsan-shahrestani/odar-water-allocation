@@ -32,6 +32,8 @@ import { AdminAuthError, AdminAuthService } from '../../core/admin-auth.service'
               placeholder="admin@odar.ir"
               [value]="email()"
               (input)="email.set($any($event.target).value)"
+              (change)="email.set($any($event.target).value)"
+              (blur)="email.set($any($event.target).value)"
               [attr.aria-invalid]="error() ? 'true' : null"
               aria-describedby="login-error"
             />
@@ -39,6 +41,7 @@ import { AdminAuthError, AdminAuthService } from '../../core/admin-auth.service'
 
           <app-input label="رمز عبور" inputId="password">
             <input
+              #passwordInput
               id="password"
               type="password"
               dir="ltr"
@@ -46,6 +49,8 @@ import { AdminAuthError, AdminAuthService } from '../../core/admin-auth.service'
               placeholder="رمز عبور"
               [value]="password()"
               (input)="password.set($any($event.target).value)"
+              (change)="password.set($any($event.target).value)"
+              (blur)="password.set($any($event.target).value)"
               [attr.aria-invalid]="error() ? 'true' : null"
               aria-describedby="login-error"
             />
@@ -145,6 +150,7 @@ export class AdminLoginComponent {
   private readonly router = inject(Router);
 
   private readonly emailInput = viewChild<ElementRef<HTMLInputElement>>('emailInput');
+  private readonly passwordInput = viewChild<ElementRef<HTMLInputElement>>('passwordInput');
   private readonly otpInput = viewChild<ElementRef<HTMLInputElement>>('otpInput');
 
   protected readonly email = signal('');
@@ -166,7 +172,15 @@ export class AdminLoginComponent {
     if (this.auth.currentStep() === 'OTP') {
       this.otpInput()?.nativeElement.focus();
     } else {
-      this.emailInput()?.nativeElement.focus();
+      const emailEl = this.emailInput()?.nativeElement;
+      if (emailEl?.value && !this.email()) {
+        this.email.set(emailEl.value);
+      }
+      const passEl = this.passwordInput()?.nativeElement;
+      if (passEl?.value && !this.password()) {
+        this.password.set(passEl.value);
+      }
+      emailEl?.focus();
     }
   }
 
@@ -174,14 +188,19 @@ export class AdminLoginComponent {
     if (this.auth.isLoading()) return;
     this.error.set('');
 
-    const emailVal = this.email().trim();
-    const passwordVal = this.password();
+    const emailEl = this.emailInput()?.nativeElement;
+    const passEl = this.passwordInput()?.nativeElement;
+    const emailVal = (emailEl?.value || this.email()).trim();
+    const passwordVal = passEl?.value || this.password();
 
     if (!emailVal || !passwordVal) {
       this.error.set('ایمیل و رمز عبور را وارد کنید.');
-      this.emailInput()?.nativeElement.focus();
+      emailEl?.focus();
       return;
     }
+
+    this.email.set(emailVal);
+    this.password.set(passwordVal);
 
     try {
       await this.auth.loginWithPassword(emailVal, passwordVal);

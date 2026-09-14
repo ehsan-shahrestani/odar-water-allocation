@@ -37,6 +37,8 @@
               placeholder="۰۹۱۲۳۴۵۶۷۸۹"
               [value]="phone()"
               (input)="phone.set($any($event.target).value)"
+              (change)="phone.set($any($event.target).value)"
+              (blur)="phone.set($any($event.target).value)"
               [attr.aria-invalid]="error() ? 'true' : null"
               aria-describedby="login-error"
               class="login-input"

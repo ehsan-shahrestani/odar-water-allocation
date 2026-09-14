@@ -4,6 +4,7 @@ import { Session, Subscription, User } from '@supabase/supabase-js';
 import { UserProfile } from './auth.model';
 import { SupabaseService } from './supabase.service';
 import { demoAccounts, normalizeDigits, Role } from './mock-data';
+export { normalizeDigits };
 
 export class AdminAuthError extends Error {
   constructor(readonly userMessage: string) {
@@ -12,19 +13,57 @@ export class AdminAuthError extends Error {
   }
 }
 
-export function normalizeIranianMobile(phone: string): string | null {
-  const compact = phone.replace(/[\s\-()]/g, '');
-  const digits = normalizeDigits(compact);
+interface AuthFailure {
+  code?: unknown;
+  message?: unknown;
+  status?: unknown;
+}
 
-  let local = digits;
-  if (digits.startsWith('+98')) {
-    local = `0${digits.slice(3)}`;
-  } else if (digits.startsWith('0098')) {
-    local = `0${digits.slice(4)}`;
-  } else if (/^98\d{10}$/.test(digits)) {
-    local = `0${digits.slice(2)}`;
-  } else if (/^9\d{9}$/.test(digits)) {
-    local = `0${digits}`;
+export function getPhoneOtpErrorMessage(error: unknown): string {
+  const failure = typeof error === 'object' && error !== null
+    ? error as AuthFailure
+    : {};
+  const code = typeof failure.code === 'string' ? failure.code : '';
+  const status = typeof failure.status === 'number' ? failure.status : null;
+
+  if (code === 'phone_provider_disabled') {
+    return 'سرویس ورود پیامکی فعال نیست. لطفاً با پشتیبانی سامانه تماس بگیرید.';
+  }
+
+  if (code === 'over_request_rate_limit' || status === 429) {
+    return 'تعداد درخواست‌های پیامک بیش از حد مجاز است. کمی صبر کنید و دوباره تلاش کنید.';
+  }
+
+  if (code === 'hook_timeout') {
+    return 'سرویس پیامک به‌موقع پاسخ نداد. لطفاً دوباره تلاش کنید.';
+  }
+
+  if (
+    code === 'sms_send_failed' ||
+    code === 'unexpected_failure' ||
+    code.startsWith('hook_') ||
+    (status !== null && status >= 500)
+  ) {
+    return 'ارسال پیامک توسط سرویس پیامک انجام نشد. لطفاً دوباره تلاش کنید.';
+  }
+
+  return 'خطا در ارسال کد تایید پیامکی. لطفاً دوباره تلاش کنید.';
+}
+
+export function normalizeIranianMobile(phone: string): string | null {
+  if (!phone) return null;
+  const withEnglishDigits = normalizeDigits(phone);
+  const clean = withEnglishDigits.replace(/[^\d+]/g, '');
+
+  let local = clean;
+  if (clean.startsWith('+98')) {
+    local = `0${clean.slice(3)}`;
+  } else if (clean.startsWith('0098')) {
+    local = `0${clean.slice(4)}`;
+  } else if (/^98\d{10}$/.test(clean)) {
+    local = `0${clean.slice(2)}`;
+  } else if (/^9\d{9}$/.test(clean)) {
+    local = `0${clean}`;
   }
 
   return /^09\d{9}$/.test(local) ? local : null;
@@ -39,6 +78,7 @@ export class AuthService {
   private readonly currentProfileState = signal<UserProfile | null>(null);
   private readonly demoRoleState = signal<Role | null>(null);
   private readonly loadingState = signal(false);
+  private readonly otpInProgress = signal(false);
   private initializationPromise: Promise<void> | null = null;
   private authSubscription: Subscription | null = null;
   private activeProfileLoad: { userId: string; request: Promise<UserProfile> } | null = null;
@@ -77,7 +117,9 @@ export class AuthService {
   }
 
   async loginPhone(rawPhone: string): Promise<{ isDemo: boolean }> {
-    if (this.loadingState()) return { isDemo: false };
+    if (this.otpInProgress()) {
+      throw new AdminAuthError('درخواست قبلی در حال انجام است. لطفاً صبر کنید.');
+    }
 
     const normalized = normalizeIranianMobile(rawPhone);
     if (!normalized) {
@@ -89,6 +131,7 @@ export class AuthService {
       return { isDemo: true };
     }
 
+    this.otpInProgress.set(true);
     this.loadingState.set(true);
     try {
       const e164 = `+98${normalized.slice(1)}`;
@@ -97,19 +140,12 @@ export class AuthService {
       });
 
       if (error) {
-        if (
-          error.message?.includes('Unsupported phone provider') ||
-          (error as { code?: string }).code === 'phone_provider_disabled'
-        ) {
-          throw new AdminAuthError(
-            'ارائه‌دهنده پیامک در پنل سوپابیس فعال نشده است. لطفاً در داشبورد سوپابیس وارد بخش Authentication > Providers شده و گزینه Phone را فعال کنید (و در بخش Hooks هوک send-sms-kavenegar را متصل کنید).'
-          );
-        }
-        throw new AdminAuthError(error.message || 'خطا در ارسال کد تایید پیامکی.');
+        throw new AdminAuthError(getPhoneOtpErrorMessage(error));
       }
 
       return { isDemo: false };
     } finally {
+      this.otpInProgress.set(false);
       this.loadingState.set(false);
     }
   }
@@ -141,6 +177,7 @@ export class AuthService {
       });
 
       if (error || !data.user) {
+        console.error('OTP verification failed:', error);
         throw new AdminAuthError('کد تایید اشتباه یا منقضی شده است.');
       }
 

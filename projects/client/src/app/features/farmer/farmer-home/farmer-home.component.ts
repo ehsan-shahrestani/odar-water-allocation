@@ -45,76 +45,84 @@ import { faNumber } from '../../../core/mock-data';
           </div>
         </app-card>
       } @else {
-        <!-- Quota Balance Card -->
-        <app-card [emphasis]="true">
-          <p class="balance-label">مانده سهمیه آب شما</p>
-          <div class="balance-number">
-            {{ number(dashboard()?.remainingHours ?? 0) }} <span>ساعت</span>
-          </div>
-          <div class="quota-summary">
-            <div>
-              <span>سهمیه کل</span>
-              <strong>{{ number(dashboard()?.quotaHours ?? 0) }} <small>ساعت</small></strong>
-            </div>
-            <div>
-              <span>مصرف‌شده</span>
-              <strong>{{ number(dashboard()?.usedHours ?? 0) }} <small>ساعت</small></strong>
-            </div>
-          </div>
-        </app-card>
-
-        <!-- Water Year Info Card -->
-        @if (dashboard()?.waterYear; as wy) {
-          <app-card>
-            <div class="flex items-center justify-between pb-2 mb-2 border-b border-forest-100">
-              <h2 class="font-bold text-forest-900">{{ wy.name }}</h2>
-              <span class="text-xs bg-mint-100 text-primary px-2 py-0.5 rounded-full font-medium">سال آبی جاری</span>
-            </div>
-            <dl class="year-dates">
-              <div>
-                <dt>تاریخ شروع</dt>
-                <dd>{{ wy.start }}</dd>
+        <div class="farmer-home-grid md:grid md:grid-cols-12 md:gap-6 space-y-5 md:space-y-0">
+          <!-- Right Column: Quota Balance & Water Year Info (5 cols) -->
+          <div class="md:col-span-5 space-y-5">
+            <!-- Quota Balance Card -->
+            <app-card [emphasis]="true">
+              <p class="balance-label">مانده سهمیه آب شما</p>
+              <div class="balance-number">
+                {{ number(dashboard()?.remainingHours ?? 0) }} <span>ساعت</span>
               </div>
-              <div>
-                <dt>تاریخ پایان</dt>
-                <dd>{{ wy.end }}</dd>
+              <div class="quota-summary">
+                <div>
+                  <span>سهمیه کل</span>
+                  <strong>{{ number(dashboard()?.quotaHours ?? 0) }} <small>ساعت</small></strong>
+                </div>
+                <div>
+                  <span>مصرف‌شده</span>
+                  <strong>{{ number(dashboard()?.usedHours ?? 0) }} <small>ساعت</small></strong>
+                </div>
               </div>
-            </dl>
-            @if (wy.description) {
-              <p class="year-description">{{ wy.description }}</p>
-            }
-          </app-card>
-        } @else {
-          <app-card>
-            <p class="text-sm text-ink-muted text-center py-2">
-              هنوز سال آبی فعالی برای این چاه تعریف نشده است.
-            </p>
-          </app-card>
-        }
+            </app-card>
 
-        <!-- Recent Usages Section -->
-        <section aria-labelledby="usage-heading">
-          <h2 id="usage-heading" class="section-title">گزارش مصرف‌های اخیر</h2>
-          <app-card>
-            @if (dashboard()?.recentUsages?.length) {
-              <ul class="divided-list">
-                @for (usage of dashboard()?.recentUsages; track usage.id) {
-                  <li>
-                    <div>
-                      <span>{{ usage.date }}</span>
-                      @if (usage.description) {
-                        <p class="text-xs text-ink-muted mt-0.5">{{ usage.description }}</p>
-                      }
-                    </div>
-                    <strong>{{ number(usage.hours) }} <small>ساعت</small></strong>
-                  </li>
+            <!-- Water Year Info Card -->
+            @if (dashboard()?.waterYear; as wy) {
+              <app-card>
+                <div class="flex items-center justify-between pb-2 mb-2 border-b border-forest-100">
+                  <h2 class="font-bold text-forest-900">{{ wy.name }}</h2>
+                  <span class="text-xs bg-mint-100 text-primary px-2 py-0.5 rounded-full font-medium">سال آبی جاری</span>
+                </div>
+                <dl class="year-dates">
+                  <div>
+                    <dt>تاریخ شروع</dt>
+                    <dd>{{ wy.start }}</dd>
+                  </div>
+                  <div>
+                    <dt>تاریخ پایان</dt>
+                    <dd>{{ wy.end }}</dd>
+                  </div>
+                </dl>
+                @if (wy.description) {
+                  <p class="year-description">{{ wy.description }}</p>
                 }
-              </ul>
+              </app-card>
             } @else {
-              <p class="empty-state">هنوز هیچ مصرف آبی برای شما در این سال آبی ثبت نشده است.</p>
+              <app-card>
+                <p class="text-sm text-ink-muted text-center py-2">
+                  هنوز سال آبی فعالی برای این چاه تعریف نشده است.
+                </p>
+              </app-card>
             }
-          </app-card>
-        </section>
+          </div>
+
+          <!-- Left Column: Recent Usages Section (7 cols) -->
+          <div class="md:col-span-7 space-y-5">
+            <!-- Recent Usages Section -->
+            <section aria-labelledby="usage-heading">
+              <h2 id="usage-heading" class="section-title">گزارش مصرف‌های اخیر</h2>
+              <app-card>
+                @if (dashboard()?.recentUsages?.length) {
+                  <ul class="divided-list">
+                    @for (usage of dashboard()?.recentUsages; track usage.id) {
+                      <li>
+                        <div>
+                          <span>{{ usage.date }}</span>
+                          @if (usage.description) {
+                            <p class="text-xs text-ink-muted mt-0.5">{{ usage.description }}</p>
+                          }
+                        </div>
+                        <strong>{{ number(usage.hours) }} <small>ساعت</small></strong>
+                      </li>
+                    }
+                  </ul>
+                } @else {
+                  <p class="empty-state">هنوز هیچ مصرف آبی برای شما در این سال آبی ثبت نشده است.</p>
+                }
+              </app-card>
+            </section>
+          </div>
+        </div>
       }
 
       <div class="pt-4 text-center">

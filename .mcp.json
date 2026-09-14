@@ -5,6 +5,7 @@
       "args": ["-y", "@angular/cli", "mcp"]
     },
     "supabase": {
+      "type": "http",
       "url": "https://mcp.supabase.com/mcp"
     }
   }

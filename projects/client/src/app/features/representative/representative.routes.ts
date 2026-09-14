@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+
 export const routes: Routes = [
   {
     path: '',
@@ -9,21 +10,39 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        title: 'خانه نماینده | اُدار',
+        title: 'داشبورد نماینده | اُدار',
         loadComponent: () =>
           import('./representative-home/representative-home.component').then(
             (m) => m.RepresentativeHomeComponent,
           ),
       },
       {
-        path: 'farmer/:farmerId',
-        title: 'جزییات کشاورز | اُدار',
+        path: 'dashboard',
+        redirectTo: '',
+        pathMatch: 'full',
+      },
+      {
+        path: 'water-years',
+        title: 'سال‌های آبی | اُدار',
         loadComponent: () =>
-          import('./farmer-detail/farmer-detail.component').then(
-            (m) => m.FarmerDetailComponent,
-          ),
+          import('./water-years/water-years.component').then((m) => m.WaterYearsComponent),
+      },
+      {
+        path: 'farmers',
+        title: 'لیست کشاورزان | اُدار',
+        loadComponent: () =>
+          import('./farmers-list/farmers-list.component').then((m) => m.FarmersListComponent),
+      },
+      {
+        path: 'farmers/:farmerId',
+        title: 'پرونده کشاورز | اُدار',
+        loadComponent: () =>
+          import('./farmer-detail/farmer-detail.component').then((m) => m.FarmerDetailComponent),
+      },
+      {
+        path: 'farmer/:farmerId',
+        redirectTo: 'farmers/:farmerId',
       },
     ],
   },
 ];
-

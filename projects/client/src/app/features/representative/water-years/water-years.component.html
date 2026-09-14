@@ -1,0 +1,225 @@
+<div class="water-years-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <span>سال‌های آبی</span>
+        <span class="count-pill">{{ number(waterYears().length) }} دوره</span>
+      </h1>
+      <p class="page-desc">دوره‌های سال آبی و نرخ معادل هر ساعت سهم مالکیت برای چاه {{ wellName() }}</p>
+    </div>
+
+    <button
+      type="button"
+      class="btn-primary"
+      (click)="openModal()"
+    >
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      <span>تعریف دوره جدید</span>
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>در حال بارگذاری سال‌های آبی...</p>
+    </div>
+  } @else if (error()) {
+    <div class="error-banner" role="alert">
+      <span>{{ error() }}</span>
+      <button app-button variant="secondary" (click)="loadData()">تلاش مجدد</button>
+    </div>
+  } @else {
+    <!-- 1. Desktop Table View (>= 768px) -->
+    <div class="table-card desktop-table-view">
+      <div class="table-responsive-wrapper">
+        <table class="data-table" aria-label="جدول سال‌های آبی چاه">
+          <thead>
+            <tr>
+              <th scope="col">دوره سال آبی</th>
+              <th scope="col">تاریخ شروع</th>
+              <th scope="col">تاریخ پایان</th>
+              <th scope="col">معادل هر ساعت مالکیت</th>
+              <th scope="col">وضعیت</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (waterYears().length === 0) {
+              <tr>
+                <td colspan="5" class="empty-cell">
+                  <span>هنوز دوره‌ای برای این چاه ثبت نشده است.</span>
+                </td>
+              </tr>
+            } @else {
+              @for (wy of waterYears(); track wy.id) {
+                <tr class="table-row">
+                  <td class="font-bold text-stone-900">{{ wy.name }}</td>
+                  <td class="text-stone-600 text-sm whitespace-nowrap">{{ wy.start || '—' }}</td>
+                  <td class="text-stone-600 text-sm whitespace-nowrap">{{ wy.end || '—' }}</td>
+                  <td>
+                    @if (wy.hoursPerShare !== null && wy.hoursPerShare !== undefined) {
+                      <span class="share-rate-badge">
+                        هر ساعت سهم = {{ number(wy.hoursPerShare) }} ساعت
+                      </span>
+                    } @else {
+                      <span class="text-stone-400 text-xs">—</span>
+                    }
+                  </td>
+                  <td>
+                    @if (wy.isActive) {
+                      <span class="status-badge active">
+                        <span class="dot"></span>
+                        <span>دوره جاری</span>
+                      </span>
+                    } @else {
+                      <span class="status-badge past">دوره‌های گذشته</span>
+                    }
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 2. Mobile Responsive Card View (< 768px) -->
+    <div class="mobile-wy-list">
+      @if (waterYears().length === 0) {
+        <div class="empty-cell text-center p-6 bg-white rounded-2xl border border-stone-200">
+          <span>هنوز دوره‌ای برای این چاه ثبت نشده است.</span>
+        </div>
+      } @else {
+        @for (wy of waterYears(); track wy.id) {
+          <div class="wy-mobile-card">
+            <div class="wym-header">
+              <span class="wym-title">{{ wy.name }}</span>
+              @if (wy.isActive) {
+                <span class="status-badge active">
+                  <span class="dot"></span>
+                  <span>دوره جاری</span>
+                </span>
+              } @else {
+                <span class="status-badge past">دوره‌های گذشته</span>
+              }
+            </div>
+
+            <div class="wym-details">
+              <div class="wym-detail-row">
+                <span class="wym-lbl">تاریخ شروع:</span>
+                <span class="wym-val">{{ wy.start || '—' }}</span>
+              </div>
+              <div class="wym-detail-row">
+                <span class="wym-lbl">تاریخ پایان:</span>
+                <span class="wym-val">{{ wy.end || '—' }}</span>
+              </div>
+              @if (wy.hoursPerShare !== null && wy.hoursPerShare !== undefined) {
+                <div class="wym-detail-row">
+                  <span class="wym-lbl">معادل سهم:</span>
+                  <span class="share-rate-badge">هر ساعت سهم = {{ number(wy.hoursPerShare) }} ساعت</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <!-- Add Water Year Modal -->
+  @if (showModal()) {
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-wy-title">
+      <button
+        type="button"
+        class="modal-overlay"
+        (click)="closeModal()"
+        aria-label="بستن پنجره"
+      ></button>
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h2 id="modal-wy-title" class="modal-title">تعریف دوره جدید سال آبی</h2>
+          <button
+            type="button"
+            class="modal-close"
+            (click)="closeModal()"
+            aria-label="بستن"
+          >
+            ×
+          </button>
+        </div>
+
+        @if (modalError()) {
+          <div class="modal-alert" role="alert">{{ modalError() }}</div>
+        }
+
+        <form (submit)="$event.preventDefault(); submitAddWaterYear()" class="modal-form">
+          <div class="form-group">
+            <label for="rep-wy-desc" class="form-label">عنوان سال آبی *</label>
+            <input
+              id="rep-wy-desc"
+              type="text"
+              class="form-input"
+              placeholder="مثال: سال آبی ۱۴۰۴ – ۱۴۰۵"
+              [value]="wyDesc()"
+              (input)="wyDesc.set($any($event.target).value)"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="rep-wy-hps" class="form-label">
+              معادل ساعت آب به ازای هر ساعت مالکیت (سهم)
+            </label>
+            <input
+              id="rep-wy-hps"
+              type="text"
+              inputmode="decimal"
+              class="form-input"
+              placeholder="مثال: ۱۶"
+              [value]="wyHoursPerShare()"
+              (input)="wyHoursPerShare.set($any($event.target).value)"
+            />
+            <small class="form-hint">
+              این عدد در پیامک‌های تخصیص سهمیه به کشاورزان درج می‌شود.
+            </small>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <app-persian-datepicker
+              label="تاریخ شروع"
+              [required]="true"
+              placeholder="مثال: 1404/07/01"
+              [(value)]="wyStartDate"
+              [(isoValue)]="wyStartIso"
+            />
+
+            <app-persian-datepicker
+              label="تاریخ پایان"
+              [required]="true"
+              placeholder="مثال: 1405/06/31"
+              [(value)]="wyEndDate"
+              [(isoValue)]="wyEndIso"
+            />
+          </div>
+
+          <div class="modal-actions mt-4">
+            <button app-button type="submit" [disabled]="submitting()">
+              {{ submitting() ? 'در حال ثبت...' : 'ثبت دوره جدید' }}
+            </button>
+            <button
+              app-button
+              type="button"
+              variant="secondary"
+              (click)="closeModal()"
+              [disabled]="submitting()"
+            >
+              انصراف
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>
