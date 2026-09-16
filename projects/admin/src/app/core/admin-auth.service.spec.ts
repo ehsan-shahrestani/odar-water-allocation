@@ -21,6 +21,7 @@ describe('AdminAuthService', () => {
   let getUser: ReturnType<typeof vi.fn>;
   let invoke: ReturnType<typeof vi.fn>;
   let onAuthStateChange: ReturnType<typeof vi.fn>;
+  let signInWithPassword: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     sessionStorage.clear();
@@ -62,7 +63,7 @@ describe('AdminAuthService', () => {
     const maybeSingle = vi.fn(async () => ({ data: profile, error: null }));
     const eq = vi.fn(() => ({ maybeSingle }));
     const from = vi.fn(() => ({ select: vi.fn(() => ({ eq })) }));
-    const signInWithPassword = vi.fn(async () => ({ data: { user }, error: null }));
+    signInWithPassword = vi.fn(async () => ({ data: { user }, error: null }));
     const signOut = vi.fn(async () => ({ error: null }));
 
     TestBed.configureTestingModule({
@@ -121,5 +122,16 @@ describe('AdminAuthService', () => {
       body: { action: 'verify', code: '123456' },
     });
     expect(auth.isFullyAuthenticated()).toBe(true);
+  });
+
+  it('reports a disabled email provider instead of blaming the credentials', async () => {
+    signInWithPassword.mockResolvedValueOnce({
+      data: { user: null },
+      error: { code: 'email_provider_disabled' },
+    });
+
+    await expect(auth.loginWithPassword('admin@example.com', 'password')).rejects.toMatchObject({
+      userMessage: 'ورود با ایمیل در سرویس احراز هویت غیرفعال است.',
+    });
   });
 });

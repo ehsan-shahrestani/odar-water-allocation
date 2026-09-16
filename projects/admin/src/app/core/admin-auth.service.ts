@@ -1,6 +1,6 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Session, Subscription, User } from '@supabase/supabase-js';
+import { AuthError, Session, Subscription, User } from '@supabase/supabase-js';
 import { UserProfile } from '@core/auth.model';
 import { normalizeDigits } from '@core/mock-data';
 import { SupabaseService } from '@core/supabase.service';
@@ -21,6 +21,22 @@ interface AdminOtpResponse {
   expiresIn?: number;
   expiresAt?: string;
   error?: string;
+}
+
+function passwordLoginErrorMessage(error: AuthError): string {
+  switch (error.code) {
+    case 'email_provider_disabled':
+      return 'ورود با ایمیل در سرویس احراز هویت غیرفعال است.';
+    case 'email_not_confirmed':
+      return 'ایمیل این حساب هنوز تأیید نشده است.';
+    case 'over_request_rate_limit':
+    case 'too_many_requests':
+      return 'تعداد تلاش‌های ورود بیش از حد مجاز است. کمی بعد دوباره تلاش کنید.';
+    case 'weak_password':
+      return 'رمز عبور فعلی با الزامات امنیتی سازگار نیست. رمز عبور را بازیابی کنید.';
+    default:
+      return 'ایمیل یا رمز عبور اشتباه است.';
+  }
 }
 
 @Injectable({ providedIn: 'root' })
@@ -95,7 +111,11 @@ export class AdminAuthService {
         password,
       });
 
-      if (error || !data.user) {
+      if (error) {
+        throw new AdminAuthError(passwordLoginErrorMessage(error));
+      }
+
+      if (!data.user) {
         throw new AdminAuthError('ایمیل یا رمز عبور اشتباه است.');
       }
 
