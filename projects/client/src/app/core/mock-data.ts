@@ -1,9 +1,4 @@
 export type Role = 'farmer' | 'representative' | 'admin';
-export const demoAccounts: Readonly<Record<string, Role>> = {
-  '09120000001': 'farmer',
-  '09120000002': 'representative',
-  '09120000003': 'admin',
-};
 export const waterYear = {
   name: '۱۴۰۴ – ۱۴۰۵',
   start: '۱ مهر ۱۴۰۴',

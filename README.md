@@ -19,12 +19,16 @@ npm run test:e2e
 
 مقادیر `supabaseUrl` و `supabasePublishableKey` را در هر دو فایل زیر جایگزین کنید:
 
-- `src/environments/environment.ts` برای build تولید
-- `src/environments/environment.development.ts` برای اجرای development
+- `projects/client/src/environments/environment.ts` برای build تولید
+- `projects/client/src/environments/environment.development.ts` برای اجرای development
 
 فقط Project URL و Publishable Key مرورگر را وارد کنید. Secret Key، `service_role` و رمز دیتابیس نباید وارد کد Angular شوند.
 
-ورود `/login` با ایمیل و رمز Supabase انجام می‌شود. پس از ورود، رکورد متناظر `profiles` خوانده می‌شود و فقط پروفایل فعال با نقش `admin` به `/admin` دسترسی دارد. نگهداری و نوسازی Session را `@supabase/supabase-js` انجام می‌دهد. guard سمت Angular فقط برای تجربه کاربری است و RLS همچنان مرجع امنیت داده‌هاست.
+ورود مدیر با ایمیل، رمز Supabase و سپس کد پیامکی انجام می‌شود. اثبات مرحله دوم در دیتابیس، با `session_id` همان نشست و انقضای ۸ ساعته ثبت می‌شود؛ RLS دسترسی مدیر را بدون این اثبات رد می‌کند. guard سمت Angular فقط برای تجربه کاربری است.
+
+نشست کاربران عادی با کلید `odar-client-auth-v1` در `localStorage` و نشست پنل مدیر با کلید `odar-admin-auth-v1` در `sessionStorage` نگهداری می‌شود. بنابراین داده نشست مدیر با بسته‌شدن تب از مرورگر حذف می‌شود، ورود دوباره لازم است و توکن دو برنامه با هم تداخل ندارد.
+
+راز امضای Auth Hook باید فقط در متغیر محیطی `SEND_SMS_HOOK_SECRET` قرار گیرد و هرگز commit نشود. هنگام انتشار تغییرات احراز هویت، migration مربوط به MFA و Edge Function `admin-otp` را پشت‌سرهم و پیش از انتشار frontend جدید اعمال کنید.
 
 ## محدوده نسخه
 

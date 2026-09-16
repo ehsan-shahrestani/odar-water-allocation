@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { Session, Subscription, User } from '@supabase/supabase-js';
 import { UserProfile } from './auth.model';
 import { SupabaseService } from './supabase.service';
-import { demoAccounts, normalizeDigits, Role } from './mock-data';
+import { normalizeDigits, Role } from './mock-data';
 export { normalizeDigits };
 
 export class AdminAuthError extends Error {
@@ -76,7 +76,6 @@ export class AuthService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly currentUserState = signal<User | null>(null);
   private readonly currentProfileState = signal<UserProfile | null>(null);
-  private readonly demoRoleState = signal<Role | null>(null);
   private readonly loadingState = signal(false);
   private readonly otpInProgress = signal(false);
   private initializationPromise: Promise<void> | null = null;
@@ -92,14 +91,12 @@ export class AuthService {
     if (profile?.role === 'admin' || profile?.role === 'representative' || profile?.role === 'farmer') {
       return profile.role as Role;
     }
-    return this.demoRoleState();
+    return null;
   });
 
   readonly isAuthenticated = computed(() => {
     const user = this.currentUserState();
     const profile = this.currentProfileState();
-    const demo = this.demoRoleState();
-    if (demo !== null) return true;
     return user !== null && profile?.id === user.id && profile.is_active;
   });
 
@@ -116,7 +113,7 @@ export class AuthService {
     return this.initializationPromise;
   }
 
-  async loginPhone(rawPhone: string): Promise<{ isDemo: boolean }> {
+  async loginPhone(rawPhone: string): Promise<void> {
     if (this.otpInProgress()) {
       throw new AdminAuthError('درخواست قبلی در حال انجام است. لطفاً صبر کنید.');
     }
@@ -124,11 +121,6 @@ export class AuthService {
     const normalized = normalizeIranianMobile(rawPhone);
     if (!normalized) {
       throw new AdminAuthError('شماره موبایل نامعتبر است. لطفاً شماره ۱۱ رقمی وارد کنید.');
-    }
-
-    // Check demo accounts
-    if (demoAccounts[normalized]) {
-      return { isDemo: true };
     }
 
     this.otpInProgress.set(true);
@@ -143,14 +135,13 @@ export class AuthService {
         throw new AdminAuthError(getPhoneOtpErrorMessage(error));
       }
 
-      return { isDemo: false };
     } finally {
       this.otpInProgress.set(false);
       this.loadingState.set(false);
     }
   }
 
-  async verifyPhoneOtp(rawPhone: string, rawOtp: string): Promise<UserProfile | { role: Role }> {
+  async verifyPhoneOtp(rawPhone: string, rawOtp: string): Promise<UserProfile> {
     if (this.loadingState()) throw new AdminAuthError('در حال پردازش…');
 
     const normalizedPhone = normalizeIranianMobile(rawPhone);
@@ -158,13 +149,6 @@ export class AuthService {
 
     if (!normalizedPhone || !/^\d{6}$/.test(otp)) {
       throw new AdminAuthError('شماره موبایل یا کد تایید ۶ رقمی نامعتبر است.');
-    }
-
-    // Demo account handling
-    const demoRole = demoAccounts[normalizedPhone];
-    if (demoRole && otp === '123456') {
-      this.demoRoleState.set(demoRole);
-      return { role: demoRole };
     }
 
     this.loadingState.set(true);
@@ -183,6 +167,9 @@ export class AuthService {
 
       this.currentUserState.set(data.user);
       const profile = await this.loadCurrentProfile();
+      if (profile.role === 'admin') {
+        await this.signOutAndClear();
+      }
       return profile;
     } finally {
       this.loadingState.set(false);
@@ -268,13 +255,13 @@ export class AuthService {
   }
 
   private async restoreSession(): Promise<void> {
-    const { data, error } = await this.supabase.auth.getSession();
-    if (error || !data.session?.user) {
+    const { data, error } = await this.supabase.auth.getUser();
+    if (error || !data.user) {
       this.clearAuthState();
       return;
     }
 
-    this.currentUserState.set(data.session.user);
+    this.currentUserState.set(data.user);
     try {
       await this.loadCurrentProfile();
     } catch {
@@ -326,7 +313,6 @@ export class AuthService {
   private clearAuthState(): void {
     this.currentUserState.set(null);
     this.currentProfileState.set(null);
-    this.demoRoleState.set(null);
     this.activeProfileLoad = null;
   }
 }

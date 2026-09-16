@@ -24,7 +24,7 @@ describe('AuthService', () => {
   let profileQueryError: boolean;
   let phoneOtpError: { code?: string; message: string; status?: number } | null;
   let auth: AuthService;
-  let getSession: ReturnType<typeof vi.fn>;
+  let getUser: ReturnType<typeof vi.fn>;
   let signInWithPassword: ReturnType<typeof vi.fn>;
   let signInWithOtp: ReturnType<typeof vi.fn>;
   let signOut: ReturnType<typeof vi.fn>;
@@ -38,7 +38,7 @@ describe('AuthService', () => {
     credentialError = false;
     profileQueryError = false;
     phoneOtpError = null;
-    getSession = vi.fn(async () => ({ data: { session: null }, error: null }));
+    getUser = vi.fn(async () => ({ data: { user: null }, error: null }));
     signInWithPassword = vi.fn(async () => ({
       data: { user: credentialError ? null : user, session: null },
       error: credentialError ? new Error('invalid credentials') : null,
@@ -58,7 +58,7 @@ describe('AuthService', () => {
     from = vi.fn(() => ({ select: vi.fn(() => ({ eq })) }));
     const supabaseStub = {
       client: {
-        auth: { getSession, signInWithOtp, signInWithPassword, signOut, onAuthStateChange },
+        auth: { getUser, signInWithOtp, signInWithPassword, signOut, onAuthStateChange },
         from,
       },
     };
@@ -76,7 +76,7 @@ describe('AuthService', () => {
   it('initializes the stored session and listener only once', async () => {
     await Promise.all([auth.initializeSession(), auth.initializeSession()]);
 
-    expect(getSession).toHaveBeenCalledOnce();
+    expect(getUser).toHaveBeenCalledOnce();
     expect(onAuthStateChange).toHaveBeenCalledOnce();
     expect(auth.isLoading()).toBe(false);
   });
