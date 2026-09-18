@@ -10,6 +10,7 @@
     "build:client": "ng build client",
     "build:admin": "ng build admin",
     "build:deploy": "node scripts/vercel-build.js",
+    "deploy:admin": "npx vercel deploy --prod --project odar-admin -b APP_TARGET=admin --yes",
     "watch": "ng build client --watch --configuration development",
     "test": "ng test",
     "lint": "eslint projects",
