@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PersianDatepickerComponent } from './persian-datepicker.component';
 import { getDaysInJalaliMonth, jalaliToIso, parseJalali } from './jalali-utils';
 
-describe('PersianDatepickerComponent (Admin Wheel Picker)', () => {
+describe('PersianDatepickerComponent (Wheel Picker)', () => {
   let component: PersianDatepickerComponent;
   let fixture: ComponentFixture<PersianDatepickerComponent>;
 
@@ -22,16 +22,21 @@ describe('PersianDatepickerComponent (Admin Wheel Picker)', () => {
 
   it('should accept inputs properly', () => {
     fixture.componentRef.setInput('placeholder', 'انتخاب تاریخ شروع');
-    fixture.componentRef.setInput('label', 'تاریخ شروع سال آبی');
+    fixture.componentRef.setInput('label', 'تاریخ شروع دوره');
     fixture.detectChanges();
 
     expect(component.placeholder()).toBe('انتخاب تاریخ شروع');
-    expect(component.label()).toBe('تاریخ شروع سال آبی');
+    expect(component.label()).toBe('تاریخ شروع دوره');
   });
 
   it('should accurately calculate Jalali days per month and leap years', () => {
+    // Months 1-6 have 31 days
     expect(getDaysInJalaliMonth(1404, 1)).toBe(31);
+    expect(getDaysInJalaliMonth(1404, 6)).toBe(31);
+    // Months 7-11 have 30 days
     expect(getDaysInJalaliMonth(1404, 7)).toBe(30);
+    expect(getDaysInJalaliMonth(1404, 11)).toBe(30);
+    // Month 12 has 29 in normal year, 30 in leap year
     expect(getDaysInJalaliMonth(1404, 12)).toBe(29);
     expect(getDaysInJalaliMonth(1403, 12)).toBe(30);
   });

@@ -13,6 +13,11 @@ import { ButtonComponent } from '../../../shared/button/button.component';
 import { CardComponent } from '../../../shared/card/card.component';
 import { faNumber, parseHoursNumber } from '../../../core/mock-data';
 import { PersianDatepickerComponent } from '../../../shared/persian-datepicker/persian-datepicker.component';
+import {
+  formatJalali,
+  getTodayJalali,
+  jalaliToIso,
+} from '../../../shared/persian-datepicker/jalali-utils';
 
 export function normalizeName(name: string): string {
   return name.trim().toLowerCase().replace(/ی/g, 'ي').replace(/ک/g, 'ك');
@@ -60,6 +65,8 @@ export class RepresentativeHomeComponent implements OnInit {
   });
   protected readonly usageHours = signal('');
   protected readonly usageDesc = signal('');
+  protected readonly usageDate = signal('');
+  protected readonly usageDateIso = signal('');
 
   // Add Farmer form state
   protected readonly addFarmerModel = signal({
@@ -196,6 +203,9 @@ export class RepresentativeHomeComponent implements OnInit {
     this.selectedFarmerForUsage.set(farmerId);
     this.usageHours.set('');
     this.usageDesc.set('');
+    const today = getTodayJalali();
+    this.usageDate.set(formatJalali(today.year, today.month, today.day));
+    this.usageDateIso.set(jalaliToIso(today.year, today.month, today.day));
     this.modalError.set('');
     this.showUsageModal.set(true);
   }
@@ -204,6 +214,9 @@ export class RepresentativeHomeComponent implements OnInit {
     this.selectedFarmerForUsage.set('');
     this.usageHours.set('');
     this.usageDesc.set('');
+    const today = getTodayJalali();
+    this.usageDate.set(formatJalali(today.year, today.month, today.day));
+    this.usageDateIso.set(jalaliToIso(today.year, today.month, today.day));
     this.modalError.set('');
     this.showUsageModal.set(true);
   }
@@ -252,12 +265,14 @@ export class RepresentativeHomeComponent implements OnInit {
     this.modalError.set('');
 
     const newRemaining = Number((farmer.remainingHours - hours).toFixed(2));
+    const usedAtIso = this.usageDateIso() ? `${this.usageDateIso()}T12:00:00Z` : undefined;
 
     try {
       const result = await this.portalData.recordWaterUsage({
         allocationId: farmer.allocationId,
         consumedHours: hours,
         description: this.usageDesc(),
+        usedAt: usedAtIso,
         createdBy: repId,
         farmerPhone: farmer.phone,
         farmerName: farmer.name,

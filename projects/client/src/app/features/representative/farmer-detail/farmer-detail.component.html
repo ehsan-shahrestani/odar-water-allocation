@@ -267,6 +267,15 @@
           </div>
 
           <div class="form-group">
+            <app-persian-datepicker
+              label="تاریخ مصرف"
+              [required]="true"
+              [(value)]="usageDate"
+              [(isoValue)]="usageDateIso"
+            />
+          </div>
+
+          <div class="form-group">
             <label for="detail-usage-desc" class="form-label">توضیحات (اختیاری)</label>
             <input
               id="detail-usage-desc"

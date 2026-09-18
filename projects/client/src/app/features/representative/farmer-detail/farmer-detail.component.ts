@@ -9,10 +9,16 @@ import {
 } from '../../../core/portal-data.service';
 import { ButtonComponent } from '../../../shared/button/button.component';
 import { faNumber, parseHoursNumber } from '../../../core/mock-data';
+import { PersianDatepickerComponent } from '../../../shared/persian-datepicker/persian-datepicker.component';
+import {
+  formatJalali,
+  getTodayJalali,
+  jalaliToIso,
+} from '../../../shared/persian-datepicker/jalali-utils';
 
 @Component({
   selector: 'app-farmer-detail',
-  imports: [ButtonComponent, RouterLink],
+  imports: [ButtonComponent, PersianDatepickerComponent, RouterLink],
   templateUrl: './farmer-detail.component.html',
   styleUrl: './farmer-detail.component.css',
 })
@@ -41,6 +47,8 @@ export class FarmerDetailComponent implements OnInit {
   // Usage form
   protected readonly usageHours = signal('');
   protected readonly usageDesc = signal('');
+  protected readonly usageDate = signal('');
+  protected readonly usageDateIso = signal('');
 
   // Quota form
   protected readonly editQuotaValue = signal('');
@@ -156,6 +164,9 @@ export class FarmerDetailComponent implements OnInit {
   protected openUsageModal(): void {
     this.usageHours.set('');
     this.usageDesc.set('');
+    const today = getTodayJalali();
+    this.usageDate.set(formatJalali(today.year, today.month, today.day));
+    this.usageDateIso.set(jalaliToIso(today.year, today.month, today.day));
     this.modalError.set('');
     this.showUsageModal.set(true);
   }
@@ -196,12 +207,14 @@ export class FarmerDetailComponent implements OnInit {
     this.modalError.set('');
 
     const newRemaining = Number((detail.remainingHours - hours).toFixed(2));
+    const usedAtIso = this.usageDateIso() ? `${this.usageDateIso()}T12:00:00Z` : undefined;
 
     try {
       const result = await this.portalData.recordWaterUsage({
         allocationId: detail.allocationId,
         consumedHours: hours,
         description: this.usageDesc(),
+        usedAt: usedAtIso,
         createdBy: repId,
         farmerPhone: detail.farmer.phone,
         farmerName: detail.farmer.name,
