@@ -89,6 +89,16 @@
               {
                 "glob": "**/*",
                 "input": "projects/admin/public"
+              },
+              {
+                "glob": "**/*",
+                "input": "projects/client/public/fonts",
+                "output": "fonts"
+              },
+              {
+                "glob": "**/*",
+                "input": "projects/client/public/icons",
+                "output": "icons"
               }
             ],
             "styles": ["projects/admin/src/styles.css"]

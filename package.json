@@ -9,6 +9,7 @@
     "build": "ng build client && ng build admin",
     "build:client": "ng build client",
     "build:admin": "ng build admin",
+    "build:deploy": "node scripts/vercel-build.js",
     "watch": "ng build client --watch --configuration development",
     "test": "ng test",
     "lint": "eslint projects",
