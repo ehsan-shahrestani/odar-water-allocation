@@ -1,0 +1,14 @@
+android/
+dist/
+node_modules/
+.git/
+.angular/
+supabase/
+scripts/build-apk.sh
+scripts/generate-android-assets.py
+playwright-report/
+test-results/
+__screenshots__/
+*.keystore
+*.jks
+*.apk
