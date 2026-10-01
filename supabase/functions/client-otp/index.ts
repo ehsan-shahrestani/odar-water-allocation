@@ -280,9 +280,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .eq("user_id", profile.id)
       .is("used_at", null);
 
-    // Issue Supabase session for this user
+    // Issue Supabase session for this user (bcrypt passwords must be <= 72 characters)
     const internalEmail = `user_${profile.id.replace(/-/g, "")}@odar.internal`;
-    const tempPassword = crypto.randomUUID() + "-" + crypto.randomUUID();
+    const tempPassword = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
 
     // Check if auth user exists
     const { data: existingUser } = await supabaseAdmin.auth.admin.getUserById(profile.id);
