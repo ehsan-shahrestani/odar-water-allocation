@@ -167,11 +167,13 @@ export class AuthService {
         }),
       ),
     ).pipe(
-      switchMap(({ data, error }) => {
-        if (error || !data?.success) {
+      switchMap(({ data, error: fetchError }) => {
+        if (fetchError || !data?.success) {
           const userMsg =
             data?.error ||
-            (error ? getPhoneOtpErrorMessage(error) : 'خطا در ارسال کد تایید پیامکی.');
+            (fetchError
+              ? getPhoneOtpErrorMessage(fetchError)
+              : 'خطا در ارسال کد تایید پیامکی. لطفاً دوباره تلاش کنید.');
           return throwError(() => new AdminAuthError(userMsg));
         }
         return of(undefined);
@@ -215,10 +217,11 @@ export class AuthService {
         }),
       ),
     ).pipe(
-      switchMap(async ({ data, error }) => {
-        if (error || !data?.success || !data?.session) {
-          console.error('Client OTP verification failed:', error || data?.error);
-          throw new AdminAuthError(data?.error || 'کد تایید اشتباه یا منقضی شده است.');
+      switchMap(async ({ data, error: fetchError }) => {
+        if (fetchError || !data?.success || !data?.session) {
+          const msg = data?.error || 'کد تایید اشتباه یا منقضی شده است.';
+          console.error('Client OTP verification failed:', msg);
+          throw new AdminAuthError(msg);
         }
 
         const { error: sessionError } = await this.supabase.auth.setSession({

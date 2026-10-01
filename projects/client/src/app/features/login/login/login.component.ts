@@ -252,7 +252,6 @@ export class LoginComponent {
           this.otpCode.set(code);
           const input = this.otpInput()?.nativeElement;
           if (input) input.value = code;
-          toast.success('کد تایید به‌صورت خودکار از پیامک خوانده شد.');
           this.verifyOtp();
         }
       })

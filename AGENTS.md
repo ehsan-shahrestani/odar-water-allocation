@@ -63,3 +63,11 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Avoid verbose explanatory texts, unnecessary disclaimers, or excessive hints (توضیحات زیاد کاربر را بیشتر گیج می‌کند).
 - Use concise labels and placeholders without redundant explanatory paragraphs.
 
+## شماره‌های مجاز برای تست پیامک (SMS Testing Allowed Numbers)
+
+برای ارسال پیامک و تست‌های احراز هویت و OTP، **فقط و فقط** مجاز به ارسال پیامک به دو شماره زیر هستید:
+- `09152404098`
+- `09905913852`
+
+ارسال پیامک به هر شماره دیگری به عنوان تست ممنوع است.
+

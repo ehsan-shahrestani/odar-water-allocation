@@ -19,8 +19,11 @@ interface RequestBody {
   code?: string;
 }
 
-function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
+function jsonResponse(data: unknown, _status = 200): Response {
+  // Always return HTTP 200 so supabase-js functions.invoke parses `data` correctly.
+  // Non-2xx causes supabase-js to set data=null and error=FunctionsHttpError,
+  // losing the structured error body.
+  return new Response(JSON.stringify(data), { status: 200, headers: JSON_HEADERS });
 }
 
 function normalizeIranianMobile(phone: string): string | null {
@@ -145,12 +148,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const codeHash = await sha256(otp);
     const expiresAt = new Date(Date.now() + OTP_EXPIRES_IN_SECONDS * 1000).toISOString();
 
-    // Invalidate existing unused codes for this user
+    // Clean up only expired codes for this user, keeping recent valid codes active
     await supabaseAdmin
       .from("client_otp_codes")
       .delete()
       .eq("user_id", profile.id)
-      .is("used_at", null);
+      .lt("expires_at", new Date().toISOString());
 
     const { data: insertedCode, error: insertError } = await supabaseAdmin
       .from("client_otp_codes")
@@ -211,36 +214,50 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return jsonResponse({ error: "کد تایید باید ۴ رقم باشد." }, 400);
     }
 
-    const { data: record, error: findError } = await supabaseAdmin
+    const codeHash = await sha256(code);
+    const nowIso = new Date().toISOString();
+
+    // 1. Look for matching unexpired, unused code for this user
+    const { data: matchedRecord, error: matchError } = await supabaseAdmin
       .from("client_otp_codes")
       .select("id, user_id, code_hash, expires_at, failed_attempts")
       .eq("user_id", profile.id)
+      .eq("code_hash", codeHash)
       .is("used_at", null)
+      .gt("expires_at", nowIso)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (findError) {
-      console.error("Failed to read client OTP record", findError);
+    if (matchError) {
+      console.error("Failed to query matched client OTP", matchError);
       return jsonResponse({ error: "بررسی کد تایید ممکن نشد." }, 500);
     }
 
-    if (!record || new Date(record.expires_at).getTime() <= Date.now()) {
-      return jsonResponse({ error: "کد تایید منقضی شده است. لطفاً کد جدید دریافت کنید." }, 400);
-    }
+    if (!matchedRecord) {
+      // No match found — check latest code to give exact reason (expired or wrong code)
+      const { data: latestRecord } = await supabaseAdmin
+        .from("client_otp_codes")
+        .select("id, expires_at, failed_attempts")
+        .eq("user_id", profile.id)
+        .is("used_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (record.failed_attempts >= MAX_VERIFY_ATTEMPTS) {
-      return jsonResponse({ error: "تعداد تلاش‌های ناموفق بیش از حد مجاز است. کد جدید دریافت کنید." }, 429);
-    }
+      if (!latestRecord || new Date(latestRecord.expires_at).getTime() <= Date.now()) {
+        return jsonResponse({ error: "کد تایید منقضی شده است. لطفاً کد جدید دریافت کنید." }, 400);
+      }
 
-    const codeHash = await sha256(code);
-    if (codeHash !== record.code_hash) {
-      const failedAttempts = record.failed_attempts + 1;
+      if (latestRecord.failed_attempts >= MAX_VERIFY_ATTEMPTS) {
+        return jsonResponse({ error: "تعداد تلاش‌های ناموفق بیش از حد مجاز است. کد جدید دریافت کنید." }, 429);
+      }
+
+      const failedAttempts = latestRecord.failed_attempts + 1;
       await supabaseAdmin
         .from("client_otp_codes")
         .update({ failed_attempts: failedAttempts })
-        .eq("id", record.id)
-        .is("used_at", null);
+        .eq("id", latestRecord.id);
 
       const errorMessage =
         failedAttempts >= MAX_VERIFY_ATTEMPTS
@@ -250,11 +267,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return jsonResponse({ error: errorMessage }, failedAttempts >= MAX_VERIFY_ATTEMPTS ? 429 : 400);
     }
 
-    // Mark as used
+    // Mark matched record as used
     await supabaseAdmin
       .from("client_otp_codes")
       .update({ used_at: new Date().toISOString() })
-      .eq("id", record.id)
+      .eq("id", matchedRecord.id);
+
+    // Clean up other unused codes for this user
+    await supabaseAdmin
+      .from("client_otp_codes")
+      .delete()
+      .eq("user_id", profile.id)
       .is("used_at", null);
 
     // Issue Supabase session for this user
@@ -276,19 +299,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
       });
       if (createError) {
         console.error("Failed to provision auth user", createError);
-        return jsonResponse({ error: "خطا در ایجاد نشست ورود" }, 500);
+        return jsonResponse({ error: "خطا در ایجاد نشست ورود: " + (createError.message || "") }, 500);
       }
     } else {
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(profile.id, {
-        email: internalEmail,
-        email_confirm: true,
-        password: tempPassword,
         phone: e164,
         phone_confirm: true,
+        password: tempPassword,
+        email: internalEmail,
+        email_confirm: true,
       });
       if (updateError) {
         console.error("Failed to update user credentials", updateError);
-        return jsonResponse({ error: "خطا در آماده‌سازی ورود" }, 500);
+        return jsonResponse({ error: "خطا در آماده‌سازی ورود: " + (updateError.message || "") }, 500);
       }
     }
 
@@ -297,19 +320,40 @@ Deno.serve(async (req: Request): Promise<Response> => {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
 
-    const { data: authData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
-      email: internalEmail,
+    let authSession = null;
+
+    // Try signing in with phone first
+    const phoneRes = await supabaseAnon.auth.signInWithPassword({
+      phone: e164,
       password: tempPassword,
     });
 
-    if (signInError || !authData.session) {
-      console.error("Failed to sign in with password in client-otp", signInError);
-      return jsonResponse({ error: "ایجاد نشست با خطا مواجه شد." }, 500);
+    if (phoneRes.data?.session) {
+      authSession = phoneRes.data.session;
+    } else {
+      // Fallback to internal email
+      const emailRes = await supabaseAnon.auth.signInWithPassword({
+        email: internalEmail,
+        password: tempPassword,
+      });
+
+      if (emailRes.data?.session) {
+        authSession = emailRes.data.session;
+      } else {
+        console.error("Failed to sign in in client-otp", {
+          phoneErr: phoneRes.error?.message,
+          emailErr: emailRes.error?.message,
+        });
+        return jsonResponse(
+          { error: "ایجاد نشست با خطا مواجه شد: " + (phoneRes.error?.message || emailRes.error?.message || "") },
+          500,
+        );
+      }
     }
 
     return jsonResponse({
       success: true,
-      session: authData.session,
+      session: authSession,
       profile,
     });
   }
