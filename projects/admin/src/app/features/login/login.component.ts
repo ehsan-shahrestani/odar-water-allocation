@@ -6,7 +6,7 @@ import { switchMap } from 'rxjs/operators';
 import { ButtonComponent } from '@shared/button/button.component';
 import { InputComponent } from '@shared/input/input.component';
 import { PageHeaderComponent } from '@shared/page-header/page-header.component';
-import { AdminAuthError, AdminAuthService } from '../../core/admin-auth.service';
+import { AdminAuthError, AdminAuthService, normalizeDigits } from '../../core/admin-auth.service';
 
 @Component({
   selector: 'app-admin-login',
@@ -80,7 +80,7 @@ import { AdminAuthError, AdminAuthService } from '../../core/admin-auth.service'
         >
           <div class="card p-4 text-center space-y-2 mb-3 bg-mint-50">
             <p class="text-sm text-ink-muted">
-              کد تایید ۶ رقمی به شماره همراه مدیر
+              کد تایید ۴ رقمی به شماره همراه مدیر
               @if (auth.maskedPhone()) {
                 <strong dir="ltr" class="inline-block mx-1 font-mono text-primary">{{ auth.maskedPhone() }}</strong>
               }
@@ -95,12 +95,12 @@ import { AdminAuthError, AdminAuthService } from '../../core/admin-auth.service'
               type="text"
               inputmode="numeric"
               pattern="[0-9]*"
-              maxlength="6"
+              maxlength="4"
               dir="ltr"
               autocomplete="one-time-code"
-              placeholder="۱۲۳۴۵۶"
+              placeholder="۱۲۳۴"
               [value]="otpCode()"
-              (input)="otpCode.set($any($event.target).value)"
+              (input)="onOtpInput($event)"
               [attr.aria-invalid]="error() ? 'true' : null"
               aria-describedby="otp-error"
               class="text-center font-mono tracking-widest text-xl"
@@ -222,13 +222,27 @@ export class AdminLoginComponent {
       });
   }
 
+  protected onOtpInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const raw = input.value;
+    const clean = normalizeDigits(raw).replace(/\D/g, '').slice(0, 4);
+    this.otpCode.set(clean);
+    if (input.value !== clean) {
+      input.value = clean;
+    }
+    if (clean.length === 4) {
+      this.submitOtp();
+    }
+  }
+
   protected submitOtp(): void {
     if (this.auth.isLoading()) return;
     this.error.set('');
 
-    const code = this.otpCode().trim();
-    if (!code || code.length !== 6) {
-      this.error.set('کد تایید ۶ رقمی را به صورت کامل وارد کنید.');
+    const raw = this.otpCode().trim();
+    const code = normalizeDigits(raw);
+    if (!code || (code.length !== 4 && code.length !== 6)) {
+      this.error.set('کد تایید ۴ رقمی را به صورت کامل وارد کنید.');
       this.otpInput()?.nativeElement.focus();
       return;
     }

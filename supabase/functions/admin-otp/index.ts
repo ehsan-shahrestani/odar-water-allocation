@@ -198,7 +198,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const random = new Uint32Array(1);
     crypto.getRandomValues(random);
-    const otp = (100000 + (random[0] % 900000)).toString();
+    const otp = (1000 + (random[0] % 9000)).toString();
     const codeHash = await sha256(otp);
     const expiresAt = new Date(Date.now() + OTP_EXPIRES_IN_SECONDS * 1000).toISOString();
 
@@ -254,8 +254,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   if (body.action === "verify") {
     const code = body.code?.trim();
-    if (!code || !/^\d{6}$/.test(code)) {
-      return jsonResponse({ error: "کد تایید باید ۶ رقمی باشد." }, 400);
+    if (!code || !/^\d{4,6}$/.test(code)) {
+      return jsonResponse({ error: "کد تایید باید ۴ رقمی باشد." }, 400);
     }
 
     const { data: record, error: findError } = await supabaseAdmin

@@ -117,10 +117,10 @@ describe('AdminAuthService', () => {
     expect(auth.isFullyAuthenticated()).toBe(false);
     expect(invoke).toHaveBeenCalledWith('admin-otp', { body: { action: 'send' } });
 
-    await firstValueFrom(auth.verifyOtp$('۱۲۳۴۵۶'));
+    await firstValueFrom(auth.verifyOtp$('۱۲۳۴'));
 
     expect(invoke).toHaveBeenCalledWith('admin-otp', {
-      body: { action: 'verify', code: '123456' },
+      body: { action: 'verify', code: '1234' },
     });
     expect(auth.isFullyAuthenticated()).toBe(true);
   });

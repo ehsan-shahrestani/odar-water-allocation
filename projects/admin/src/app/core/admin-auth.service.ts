@@ -7,6 +7,8 @@ import { UserProfile } from '@core/auth.model';
 import { normalizeDigits } from '@core/mock-data';
 import { SupabaseService } from '@core/supabase.service';
 
+export { normalizeDigits };
+
 export class AdminAuthError extends Error {
   constructor(readonly userMessage: string) {
     super(userMessage);
@@ -180,8 +182,8 @@ export class AdminAuthService {
     if (this.loadingState()) return of(undefined);
 
     const code = normalizeDigits(rawCode);
-    if (!/^\d{6}$/.test(code)) {
-      return throwError(() => new AdminAuthError('کد تایید باید ۶ رقمی باشد.'));
+    if (!/^\d{4,6}$/.test(code)) {
+      return throwError(() => new AdminAuthError('کد تایید باید ۴ رقمی باشد.'));
     }
 
     this.loadingState.set(true);
