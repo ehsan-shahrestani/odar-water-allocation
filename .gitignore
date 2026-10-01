@@ -45,3 +45,9 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 .vercel
+
+# Android & Keystore
+*.keystore
+*.jks
+android/local.properties
+dist/apk/

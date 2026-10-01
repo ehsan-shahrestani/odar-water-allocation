@@ -48,6 +48,10 @@ describe('AuthService', () => {
       error: phoneOtpError,
     }));
     signOut = vi.fn(async () => ({ error: null }));
+    const verifyOtp = vi.fn(async () => ({
+      data: { user: { id: 'farmer-1' } as User, session: null },
+      error: null,
+    }));
     unsubscribe = vi.fn();
     onAuthStateChange = vi.fn(() => ({ data: { subscription: { unsubscribe } } }));
     const maybeSingle = vi.fn(async () => ({
@@ -58,7 +62,7 @@ describe('AuthService', () => {
     from = vi.fn(() => ({ select: vi.fn(() => ({ eq })) }));
     const supabaseStub = {
       client: {
-        auth: { getUser, signInWithOtp, signInWithPassword, signOut, onAuthStateChange },
+        auth: { getUser, signInWithOtp, signInWithPassword, signOut, onAuthStateChange, verifyOtp },
         from,
       },
     };
@@ -169,6 +173,27 @@ describe('AuthService', () => {
     expect(auth.currentUser()).toBeNull();
     expect(auth.currentProfile()).toBeNull();
     expect(navigate).toHaveBeenCalledWith('/login');
+  });
+
+  it('verifies valid 4-digit phone OTP successfully', async () => {
+    profile = { ...activeAdmin, role: 'farmer' };
+    const res = await auth.verifyPhoneOtp('09123456789', '2587');
+    expect(res.role).toBe('farmer');
+  });
+
+  it('verifies 4-digit phone OTP with Persian digits', async () => {
+    profile = { ...activeAdmin, role: 'farmer' };
+    const res = await auth.verifyPhoneOtp('09123456789', '۲۵۸۷');
+    expect(res.role).toBe('farmer');
+  });
+
+  it('rejects invalid OTP length (e.g. 3 digits or non-digits)', async () => {
+    await expect(auth.verifyPhoneOtp('09123456789', '123')).rejects.toMatchObject({
+      userMessage: 'شماره موبایل یا کد تایید ۴ رقمی نامعتبر است.',
+    });
+    await expect(auth.verifyPhoneOtp('09123456789', 'abcd')).rejects.toMatchObject({
+      userMessage: 'شماره موبایل یا کد تایید ۴ رقمی نامعتبر است.',
+    });
   });
 
   it('unsubscribes the auth listener when the service is destroyed', async () => {

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">اُدار</string>
+    <string name="title_activity_main">اُدار</string>
+    <string name="package_name">ir.odar.client</string>
+    <string name="custom_url_scheme">ir.odar.client</string>
+</resources>

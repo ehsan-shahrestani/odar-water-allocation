@@ -164,7 +164,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const receptor = normalizeIranianMobile(payload.user.phone);
     const otp = payload.sms.otp;
 
-    if (!receptor || !/^\d{6}$/.test(otp)) {
+    if (!receptor || !/^\d{4,6}$/.test(otp)) {
       logEvent("warn", "hook.payload.rejected", requestId, requestStartedAt, {
         phoneValid: Boolean(receptor),
         otpLength: otp.length,

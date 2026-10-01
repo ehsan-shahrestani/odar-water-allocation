@@ -258,6 +258,7 @@ otp_expiry = 3600
 enable_signup = true
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = false
+otp_length = 4
 
 [functions.representative-add-farmer]
 verify_jwt = true

@@ -193,9 +193,9 @@ export class AuthService {
     const normalizedPhone = normalizeIranianMobile(rawPhone);
     const otp = normalizeDigits(rawOtp);
 
-    if (!normalizedPhone || !/^\d{6}$/.test(otp)) {
+    if (!normalizedPhone || !/^\d{4,6}$/.test(otp)) {
       return throwError(
-        () => new AdminAuthError('شماره موبایل یا کد تایید ۶ رقمی نامعتبر است.'),
+        () => new AdminAuthError('شماره موبایل یا کد تایید ۴ رقمی نامعتبر است.'),
       );
     }
 
