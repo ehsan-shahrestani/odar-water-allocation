@@ -91,17 +91,17 @@
         </div>
 
         <div class="input-block">
-          <label for="otpCode" class="input-label">کد تایید پیامکی</label>
+          <label for="otpCode" class="input-label">کد تایید ۴ رقمی</label>
           <input
             #otpInput
             id="otpCode"
             type="text"
             inputmode="numeric"
             pattern="[0-9]*"
-            maxlength="6"
+            maxlength="4"
             dir="ltr"
             autocomplete="one-time-code"
-            placeholder="— — — — — —"
+            placeholder="— — — —"
             [value]="otpCode()"
             (input)="onOtpInput($event)"
             (paste)="onOtpPaste($event)"

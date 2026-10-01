@@ -160,17 +160,19 @@ export class AuthService {
     this.otpInProgress.set(true);
     this.loadingState.set(true);
 
-    const e164 = `+98${normalized.slice(1)}`;
     return defer(() =>
       from(
-        this.supabase.auth.signInWithOtp({
-          phone: e164,
+        this.supabase.functions.invoke<{ success?: boolean; error?: string }>('client-otp', {
+          body: { action: 'send', phone: normalized },
         }),
       ),
     ).pipe(
-      switchMap(({ error }) => {
-        if (error) {
-          return throwError(() => new AdminAuthError(getPhoneOtpErrorMessage(error)));
+      switchMap(({ data, error }) => {
+        if (error || !data?.success) {
+          const userMsg =
+            data?.error ||
+            (error ? getPhoneOtpErrorMessage(error) : 'خطا در ارسال کد تایید پیامکی.');
+          return throwError(() => new AdminAuthError(userMsg));
         }
         return of(undefined);
       }),
@@ -193,39 +195,49 @@ export class AuthService {
     const normalizedPhone = normalizeIranianMobile(rawPhone);
     const otp = normalizeDigits(rawOtp);
 
-    if (!normalizedPhone || !/^\d{4,6}$/.test(otp)) {
+    if (!normalizedPhone || !/^\d{4}$/.test(otp)) {
       return throwError(
         () => new AdminAuthError('شماره موبایل یا کد تایید ۴ رقمی نامعتبر است.'),
       );
     }
 
     this.loadingState.set(true);
-    const e164 = `+98${normalizedPhone.slice(1)}`;
 
     return defer(() =>
       from(
-        this.supabase.auth.verifyOtp({
-          phone: e164,
-          token: otp,
-          type: 'sms',
+        this.supabase.functions.invoke<{
+          success?: boolean;
+          error?: string;
+          session?: Session;
+          profile?: UserProfile;
+        }>('client-otp', {
+          body: { action: 'verify', phone: normalizedPhone, code: otp },
         }),
       ),
     ).pipe(
-      switchMap(({ data, error }) => {
-        if (error || !data.user) {
-          console.error('OTP verification failed:', error);
-          return throwError(() => new AdminAuthError('کد تایید اشتباه یا منقضی شده است.'));
+      switchMap(async ({ data, error }) => {
+        if (error || !data?.success || !data?.session) {
+          console.error('Client OTP verification failed:', error || data?.error);
+          throw new AdminAuthError(data?.error || 'کد تایید اشتباه یا منقضی شده است.');
         }
 
-        this.currentUserState.set(data.user);
-        return this.loadCurrentProfile$().pipe(
-          switchMap((profile) => {
-            if (profile.role === 'admin') {
-              return this.signOutAndClear$().pipe(map(() => profile));
-            }
-            return of(profile);
-          }),
-        );
+        const { error: sessionError } = await this.supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+
+        if (sessionError) {
+          console.error('Failed to set Supabase session:', sessionError);
+          throw new AdminAuthError('خطا در ثبت نشست کاربری. لطفاً دوباره وارد شوید.');
+        }
+
+        this.currentUserState.set(data.session.user);
+        if (data.profile) {
+          this.currentProfileState.set(data.profile);
+          return data.profile;
+        }
+
+        return firstValueFrom(this.loadCurrentProfile$());
       }),
       finalize(() => this.loadingState.set(false)),
     );

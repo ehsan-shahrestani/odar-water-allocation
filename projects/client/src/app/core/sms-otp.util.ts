@@ -9,7 +9,7 @@ import { normalizeDigits } from './mock-data';
  */
 export function extractOtpFromSms(
   sms: string | null | undefined,
-  expectedLength: number | number[] = [6, 4],
+  expectedLength: number | number[] = 4,
 ): string | null {
   if (!sms || typeof sms !== 'string') {
     return null;

@@ -26,10 +26,11 @@ describe('AuthService', () => {
   let auth: AuthService;
   let getUser: ReturnType<typeof vi.fn>;
   let signInWithPassword: ReturnType<typeof vi.fn>;
-  let signInWithOtp: ReturnType<typeof vi.fn>;
   let signOut: ReturnType<typeof vi.fn>;
   let onAuthStateChange: ReturnType<typeof vi.fn>;
   let unsubscribe: ReturnType<typeof vi.fn>;
+  let setSession: ReturnType<typeof vi.fn>;
+  let functionsInvoke: ReturnType<typeof vi.fn>;
   let from: ReturnType<typeof vi.fn>;
   let eq: ReturnType<typeof vi.fn>;
 
@@ -43,15 +44,29 @@ describe('AuthService', () => {
       data: { user: credentialError ? null : user, session: null },
       error: credentialError ? new Error('invalid credentials') : null,
     }));
-    signInWithOtp = vi.fn(async () => ({
-      data: { messageId: null, user: null, session: null },
-      error: phoneOtpError,
-    }));
     signOut = vi.fn(async () => ({ error: null }));
-    const verifyOtp = vi.fn(async () => ({
-      data: { user: { id: 'farmer-1' } as User, session: null },
-      error: null,
-    }));
+    setSession = vi.fn(async () => ({ data: { session: null, user: null }, error: null }));
+    functionsInvoke = vi.fn(async (_name: string, options: { body?: { action?: string; phone?: string; code?: string } }) => {
+      const body = options?.body;
+      if (body?.action === 'send') {
+        if (phoneOtpError) return { data: null, error: phoneOtpError };
+        return { data: { success: true }, error: null };
+      }
+      if (body?.action === 'verify') {
+        if (body.code === '2587') {
+          return {
+            data: {
+              success: true,
+              session: { access_token: 'fake-token', refresh_token: 'fake-refresh', user: { id: 'farmer-1' } as User },
+              profile,
+            },
+            error: null,
+          };
+        }
+        return { data: { success: false, error: 'کد تایید اشتباه یا منقضی شده است.' }, error: null };
+      }
+      return { data: null, error: new Error('unknown action') };
+    });
     unsubscribe = vi.fn();
     onAuthStateChange = vi.fn(() => ({ data: { subscription: { unsubscribe } } }));
     const maybeSingle = vi.fn(async () => ({
@@ -62,7 +77,8 @@ describe('AuthService', () => {
     from = vi.fn(() => ({ select: vi.fn(() => ({ eq })) }));
     const supabaseStub = {
       client: {
-        auth: { getUser, signInWithOtp, signInWithPassword, signOut, onAuthStateChange, verifyOtp },
+        auth: { getUser, signInWithPassword, signOut, onAuthStateChange, setSession },
+        functions: { invoke: functionsInvoke },
         from,
       },
     };
@@ -113,8 +129,8 @@ describe('AuthService', () => {
   it('normalizes the phone before requesting an OTP', async () => {
     await auth.loginPhone('۰۹۹۰۵۹۱۳۸۵۲');
 
-    expect(signInWithOtp).toHaveBeenCalledWith({
-      phone: '+989905913852',
+    expect(functionsInvoke).toHaveBeenCalledWith('client-otp', {
+      body: { action: 'send', phone: '09905913852' },
     });
   });
 
@@ -192,6 +208,12 @@ describe('AuthService', () => {
       userMessage: 'شماره موبایل یا کد تایید ۴ رقمی نامعتبر است.',
     });
     await expect(auth.verifyPhoneOtp('09123456789', 'abcd')).rejects.toMatchObject({
+      userMessage: 'شماره موبایل یا کد تایید ۴ رقمی نامعتبر است.',
+    });
+  });
+
+  it('rejects 6-digit OTP when 4-digit OTP is required', async () => {
+    await expect(auth.verifyPhoneOtp('09123456789', '025877')).rejects.toMatchObject({
       userMessage: 'شماره موبایل یا کد تایید ۴ رقمی نامعتبر است.',
     });
   });
