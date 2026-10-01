@@ -56,6 +56,37 @@ async function sha256(text: string): Promise<string> {
     .join("");
 }
 
+function generateSecurePassword(): string {
+  const lowers = "abcdefghijklmnopqrstuvwxyz";
+  const uppers = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numbers = "0123456789";
+  const specials = "!@#$%^&*";
+  const all = lowers + uppers + numbers + specials;
+
+  const randomBytes = new Uint8Array(32);
+  crypto.getRandomValues(randomBytes);
+
+  // Guarantee at least one of each required category
+  const chars = [
+    lowers[randomBytes[0] % lowers.length],
+    uppers[randomBytes[1] % uppers.length],
+    numbers[randomBytes[2] % numbers.length],
+    specials[randomBytes[3] % specials.length],
+  ];
+
+  for (let i = 4; i < 32; i++) {
+    chars.push(all[randomBytes[i] % all.length]);
+  }
+
+  // In-place shuffle
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomBytes[i] % (i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+
+  return chars.join("");
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: JSON_HEADERS });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
@@ -280,9 +311,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .eq("user_id", profile.id)
       .is("used_at", null);
 
-    // Issue Supabase session for this user (bcrypt passwords must be <= 72 characters)
+    // Issue Supabase session for this user (must satisfy complexity and <= 72 characters)
     const internalEmail = `user_${profile.id.replace(/-/g, "")}@odar.internal`;
-    const tempPassword = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+    const tempPassword = generateSecurePassword();
 
     // Check if auth user exists
     const { data: existingUser } = await supabaseAdmin.auth.admin.getUserById(profile.id);
