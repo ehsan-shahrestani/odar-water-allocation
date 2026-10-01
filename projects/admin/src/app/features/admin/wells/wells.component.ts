@@ -1,5 +1,5 @@
 import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { toast } from 'ngx-sonner';
@@ -135,7 +135,7 @@ import { UserProfile } from '@core/auth.model';
                     </span>
                   </td>
                   <td>
-                    <div class="actions-cell" (click)="$event.stopPropagation()">
+                    <div class="actions-cell">
                       <button
                         type="button"
                         class="btn-table-action btn-action-detail"
@@ -171,7 +171,13 @@ import { UserProfile } from '@core/auth.model';
           <!-- Card list for mobile screens -->
           <div class="mobile-cards md:hidden">
             @for (well of filteredWells(); track well.id) {
-              <div class="mobile-well-card" (click)="navigateToWell(well.id)">
+              <div
+                class="mobile-well-card"
+                role="button"
+                tabindex="0"
+                (click)="navigateToWell(well.id)"
+                (keydown.enter)="navigateToWell(well.id)"
+              >
                 <div class="card-top">
                   <div class="flex items-center gap-2.5">
                     <div class="well-avatar-sm">
@@ -204,18 +210,18 @@ import { UserProfile } from '@core/auth.model';
                   }
                 </div>
 
-                <div class="card-bottom" (click)="$event.stopPropagation()">
+                <div class="card-bottom">
                   <button
                     type="button"
                     class="btn-table-action"
-                    (click)="openChangeRepModal(well)"
+                    (click)="$event.stopPropagation(); openChangeRepModal(well)"
                   >
                     تغییر نماینده
                   </button>
                   <button
                     type="button"
                     class="btn-table-action"
-                    (click)="openEditWellModal(well)"
+                    (click)="$event.stopPropagation(); openEditWellModal(well)"
                   >
                     ویرایش
                   </button>
@@ -1019,15 +1025,16 @@ export class AdminWellsComponent {
             );
 
             // Send assignment SMS to new representative
-            void this.dataService
-              .notifyRepresentativeAssigned({
+            this.dataService
+              .notifyRepresentativeAssigned$({
                 wellId: well.id,
                 wellName: well.name,
                 representativeId: newRepId,
                 phone: repObj?.phone,
                 fullName: repObj?.full_name,
               })
-              .then((smsRes) => {
+              .pipe(takeUntilDestroyed(this.destroyRef))
+              .subscribe((smsRes) => {
                 if (smsRes.success) {
                   toast.info(
                     `پیامک ایجاد پنل برای نماینده «${repObj?.full_name || 'نماینده'}» ارسال شد.`
@@ -1093,15 +1100,16 @@ export class AdminWellsComponent {
             toast.success('مشخصات چاه با موفقیت ویرایش شد.');
 
             if (isNewRep && repId) {
-              void this.dataService
-                .notifyRepresentativeAssigned({
+              this.dataService
+                .notifyRepresentativeAssigned$({
                   wellId: wellId,
                   wellName: name,
                   representativeId: repId,
                   phone: repObj?.phone,
                   fullName: repObj?.full_name,
                 })
-                .then((smsRes) => {
+                .pipe(takeUntilDestroyed(this.destroyRef))
+                .subscribe((smsRes) => {
                   if (smsRes.success) {
                     toast.info(
                       `پیامک ایجاد پنل برای نماینده «${repObj?.full_name || 'نماینده'}» ارسال شد.`
@@ -1140,15 +1148,16 @@ export class AdminWellsComponent {
             toast.success(`چاه جدید «${newWell.name}» با موفقیت افزوده شد.`);
 
             if (repId) {
-              void this.dataService
-                .notifyRepresentativeAssigned({
+              this.dataService
+                .notifyRepresentativeAssigned$({
                   wellId: newWell.id,
                   wellName: newWell.name,
                   representativeId: repId,
                   phone: repObj?.phone,
                   fullName: repObj?.full_name,
                 })
-                .then((smsRes) => {
+                .pipe(takeUntilDestroyed(this.destroyRef))
+                .subscribe((smsRes) => {
                   if (smsRes.success) {
                     toast.info(
                       `پیامک ایجاد پنل برای نماینده «${repObj?.full_name || 'نماینده'}» ارسال شد.`

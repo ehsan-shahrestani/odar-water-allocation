@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { User } from '@supabase/supabase-js';
 import { UserProfile } from '@core/auth.model';
 import { SupabaseService } from '@core/supabase.service';
@@ -91,7 +92,7 @@ describe('AdminAuthService', () => {
     sessionStorage.setItem('odar_admin_2fa_verified', 'true');
     storedUser = user;
 
-    await auth.initializeSession();
+    await firstValueFrom(auth.initializeSession$());
 
     expect(auth.currentStep()).toBe('OTP');
     expect(auth.isFullyAuthenticated()).toBe(false);
@@ -102,21 +103,21 @@ describe('AdminAuthService', () => {
     storedUser = user;
     serverMfaVerified = true;
 
-    await auth.initializeSession();
+    await firstValueFrom(auth.initializeSession$());
 
     expect(auth.currentStep()).toBe('AUTHENTICATED');
     expect(auth.isFullyAuthenticated()).toBe(true);
   });
 
   it('requires password and OTP before authenticating', async () => {
-    await auth.initializeSession();
-    await auth.loginWithPassword('admin@example.com', 'password');
+    await firstValueFrom(auth.initializeSession$());
+    await firstValueFrom(auth.loginWithPassword$('admin@example.com', 'password'));
 
     expect(auth.currentStep()).toBe('OTP');
     expect(auth.isFullyAuthenticated()).toBe(false);
     expect(invoke).toHaveBeenCalledWith('admin-otp', { body: { action: 'send' } });
 
-    await auth.verifyOtp('۱۲۳۴۵۶');
+    await firstValueFrom(auth.verifyOtp$('۱۲۳۴۵۶'));
 
     expect(invoke).toHaveBeenCalledWith('admin-otp', {
       body: { action: 'verify', code: '123456' },
@@ -130,7 +131,9 @@ describe('AdminAuthService', () => {
       error: { code: 'email_provider_disabled' },
     });
 
-    await expect(auth.loginWithPassword('admin@example.com', 'password')).rejects.toMatchObject({
+    await expect(
+      firstValueFrom(auth.loginWithPassword$('admin@example.com', 'password')),
+    ).rejects.toMatchObject({
       userMessage: 'ورود با ایمیل در سرویس احراز هویت غیرفعال است.',
     });
   });

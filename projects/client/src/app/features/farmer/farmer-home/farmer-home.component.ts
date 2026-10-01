@@ -1,4 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize, switchMap } from 'rxjs';
 import { toast } from 'ngx-sonner';
 import { AuthService } from '../../../core/auth.service';
 import { FarmerDashboardData, PortalDataService } from '../../../core/portal-data.service';
@@ -142,6 +144,7 @@ import { faNumber } from '../../../core/mock-data';
 export class FarmerHomeComponent implements OnInit {
   protected readonly auth = inject(AuthService);
   private readonly portalData = inject(PortalDataService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly loading = signal(true);
   protected readonly error = signal('');
@@ -153,38 +156,33 @@ export class FarmerHomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    void this.loadData();
+    this.loadData();
   }
 
-  protected async loadData(): Promise<void> {
+  protected loadData(): void {
     this.loading.set(true);
     this.error.set('');
 
-    try {
-      const profile = this.auth.currentProfile();
-      if (!profile?.id) {
-        // Wait or re-fetch profile
-        await this.auth.initializeSession();
-      }
-
-      const currentId = this.auth.currentProfile()?.id;
-      if (!currentId) {
-        throw new Error('اطلاعات کاربری یافت نشد. لطفاً مجدداً وارد شوید.');
-      }
-
-      const data = await this.portalData.getFarmerDashboard(currentId);
-      this.dashboard.set(data);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'خطا در دریافت اطلاعات سامانه';
-      this.error.set(msg);
-      toast.error(msg);
-    } finally {
-      this.loading.set(false);
-    }
+    this.auth.ensureProfile$().pipe(
+      switchMap((profile) => this.portalData.getFarmerDashboard$(profile.id)),
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.loading.set(false)),
+    ).subscribe({
+      next: (data) => {
+        this.dashboard.set(data);
+      },
+      error: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'خطا در دریافت اطلاعات سامانه';
+        this.error.set(msg);
+        toast.error(msg);
+      },
+    });
   }
 
-  protected async logout(): Promise<void> {
+  protected logout(): void {
     toast.info('در حال خروج از حساب...');
-    await this.auth.logout();
+    this.auth.logout$().pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe();
   }
 }

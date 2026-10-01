@@ -1,5 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AdminAuthService } from '../../../core/admin-auth.service';
 
 @Component({
@@ -534,7 +535,7 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
 })
 export class AdminLayoutComponent {
   private readonly auth = inject(AdminAuthService);
-  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly sidebarOpen = signal(false);
 
@@ -561,7 +562,7 @@ export class AdminLayoutComponent {
     this.sidebarOpen.set(open);
   }
 
-  protected async onLogout(): Promise<void> {
-    await this.auth.logout();
+  protected onLogout(): void {
+    this.auth.logout$().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
   }
 }

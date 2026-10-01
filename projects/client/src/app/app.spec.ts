@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import { of } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -18,7 +19,10 @@ describe('Portal route access', () => {
     isAuthenticated: authenticated.asReadonly(),
     isLoading: signal(false).asReadonly(),
     initializeSession: vi.fn(async () => undefined),
+    initializeSession$: vi.fn(() => of(undefined)),
+    ensureProfile$: vi.fn(() => of(profile() ?? { id: 'test-user', phone: '09120000000', full_name: 'کاربر تست', role: userRole() ?? 'farmer', is_active: true, created_at: '' })),
     logout: vi.fn(async () => undefined),
+    logout$: vi.fn(() => of(undefined)),
   };
 
   beforeEach(() => {

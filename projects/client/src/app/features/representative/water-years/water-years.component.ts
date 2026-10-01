@@ -1,4 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize, switchMap } from 'rxjs';
 import { AuthService } from '../../../core/auth.service';
 import { PortalDataService, WaterYearItem } from '../../../core/portal-data.service';
 import { ButtonComponent } from '../../../shared/button/button.component';
@@ -15,6 +17,7 @@ import { toast } from 'ngx-sonner';
 export class WaterYearsComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly portalData = inject(PortalDataService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly loading = signal(true);
   protected readonly error = signal('');
@@ -45,38 +48,35 @@ export class WaterYearsComponent implements OnInit {
   protected readonly number = (v: number | string | undefined | null) => this.formatNumber(v);
 
   ngOnInit(): void {
-    void this.loadData();
+    this.loadData();
   }
 
-  protected async loadData(): Promise<void> {
+  protected loadData(): void {
     this.loading.set(true);
     this.error.set('');
 
-    try {
-      const profile = this.auth.currentProfile();
-      if (!profile?.id) {
-        await this.auth.initializeSession();
-      }
-
-      const currentId = this.auth.currentProfile()?.id;
-      if (!currentId) {
-        throw new Error('اطلاعات کاربری نماینده یافت نشد.');
-      }
-
-      const dashboard = await this.portalData.getRepresentativeDashboard(currentId);
-      if (dashboard.well?.id) {
-        this.wellId.set(dashboard.well.id);
-        this.wellName.set(dashboard.well.name);
-        const list = await this.portalData.getWaterYearsForWell(dashboard.well.id);
+    this.auth.ensureProfile$().pipe(
+      switchMap((profile) => this.portalData.getRepresentativeDashboard$(profile.id)),
+      switchMap((dashboard) => {
+        if (dashboard.well?.id) {
+          this.wellId.set(dashboard.well.id);
+          this.wellName.set(dashboard.well.name);
+          return this.portalData.getWaterYearsForWell$(dashboard.well.id);
+        }
+        throw new Error('چاهی به حساب شما متصل نیست.');
+      }),
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.loading.set(false)),
+    ).subscribe({
+      next: (list) => {
         this.waterYears.set(list);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'خطا در دریافت سال‌های آبی';
-      this.error.set(msg);
-      toast.error(msg);
-    } finally {
-      this.loading.set(false);
-    }
+      },
+      error: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'خطا در دریافت سال‌های آبی';
+        this.error.set(msg);
+        toast.error(msg);
+      },
+    });
   }
 
   protected openModal(): void {
@@ -94,7 +94,7 @@ export class WaterYearsComponent implements OnInit {
     this.showModal.set(false);
   }
 
-  protected async submitAddWaterYear(): Promise<void> {
+  protected submitAddWaterYear(): void {
     const wellId = this.wellId();
     const desc = this.wyDesc().trim();
     const startIso = this.wyStartIso().trim();
@@ -117,24 +117,26 @@ export class WaterYearsComponent implements OnInit {
     this.submitting.set(true);
     this.modalError.set('');
 
-    try {
-      await this.portalData.createWaterYear({
-        wellId,
-        description: desc,
-        startDate: startIso,
-        endDate: endIso,
-        hoursPerShare,
-      });
-
-      this.closeModal();
-      toast.success(`دوره سال آبی «${desc}» با موفقیت تعریف شد.`);
-      await this.loadData();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'خطا در تعریف سال آبی';
-      this.modalError.set(msg);
-      toast.error(msg);
-    } finally {
-      this.submitting.set(false);
-    }
+    this.portalData.createWaterYear$({
+      wellId,
+      description: desc,
+      startDate: startIso,
+      endDate: endIso,
+      hoursPerShare,
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.submitting.set(false)),
+    ).subscribe({
+      next: () => {
+        this.closeModal();
+        toast.success(`دوره سال آبی «${desc}» با موفقیت تعریف شد.`);
+        this.loadData();
+      },
+      error: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'خطا در تعریف سال آبی';
+        this.modalError.set(msg);
+        toast.error(msg);
+      },
+    });
   }
 }

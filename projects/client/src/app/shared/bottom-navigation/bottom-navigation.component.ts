@@ -1,6 +1,8 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, DestroyRef, inject, input } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+
 @Component({
   selector: 'app-bottom-navigation',
   imports: [RouterLink],
@@ -19,8 +21,9 @@ import { AuthService } from '../../core/auth.service';
 export class BottomNavigationComponent {
   readonly home = input.required<string>();
   protected readonly auth = inject(AuthService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected logout(): void {
-    void this.auth.logout();
+    this.auth.logout$().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
   }
 }

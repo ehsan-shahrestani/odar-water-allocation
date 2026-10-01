@@ -1,6 +1,8 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthError, Session, Subscription, User } from '@supabase/supabase-js';
+import { Observable, defer, from, of, throwError } from 'rxjs';
+import { catchError, finalize, map, shareReplay, switchMap, tap } from 'rxjs/operators';
 import { UserProfile } from '@core/auth.model';
 import { normalizeDigits } from '@core/mock-data';
 import { SupabaseService } from '@core/supabase.service';
@@ -52,7 +54,7 @@ export class AdminAuthService {
   private readonly loadingState = signal(false);
   private readonly maskedPhoneState = signal('');
   private readonly resendSecondsState = signal(0);
-  private initializationPromise: Promise<void> | null = null;
+  private initSession$?: Observable<void>;
   private timerInterval: ReturnType<typeof setInterval> | null = null;
   private mfaExpiryTimeout: ReturnType<typeof setTimeout> | null = null;
   private authSubscription: Subscription | null = null;
@@ -89,102 +91,138 @@ export class AdminAuthService {
     });
   }
 
-  initializeSession(): Promise<void> {
-    if (this.initializationPromise) return this.initializationPromise;
+  initializeSession$(): Observable<void> {
+    if (this.initSession$) {
+      return this.initSession$;
+    }
 
     this.registerAuthListener();
     this.loadingState.set(true);
-    this.initializationPromise = this.restoreSession().finally(() => this.loadingState.set(false));
-    return this.initializationPromise;
+
+    this.initSession$ = this.restoreSession$().pipe(
+      finalize(() => this.loadingState.set(false)),
+      shareReplay(1),
+    );
+    return this.initSession$;
   }
 
-  async loginWithPassword(email: string, password: string): Promise<void> {
+  /** Alias for backward compatibility */
+  initializeSession(): Observable<void> {
+    return this.initializeSession$();
+  }
+
+  loginWithPassword$(email: string, password: string): Observable<void> {
     if (this.loadingState()) {
-      throw new AdminAuthError('درخواست قبلی در حال پردازش است.');
+      return throwError(() => new AdminAuthError('درخواست قبلی در حال پردازش است.'));
     }
 
     this.loadingState.set(true);
     this.clearAuthState();
-    try {
-      const { data, error } = await this.supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
 
-      if (error) {
-        throw new AdminAuthError(passwordLoginErrorMessage(error));
-      }
+    return defer(() =>
+      from(
+        this.supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        }),
+      ),
+    ).pipe(
+      switchMap(({ data, error }) => {
+        if (error) {
+          return throwError(() => new AdminAuthError(passwordLoginErrorMessage(error)));
+        }
+        if (!data.user) {
+          return throwError(() => new AdminAuthError('ایمیل یا رمز عبور اشتباه است.'));
+        }
 
-      if (!data.user) {
-        throw new AdminAuthError('ایمیل یا رمز عبور اشتباه است.');
-      }
-
-      this.currentUserState.set(data.user);
-      const profile = await this.loadCurrentProfile(data.user.id);
-
-      if (profile.role !== 'admin' || !profile.is_active) {
-        await this.signOutAndClear();
-        throw new AdminAuthError('این حساب کاربری دسترسی ادمین ندارد یا غیرفعال است.');
-      }
-
-      this.stepState.set('OTP');
-      await this.requestOtp();
-    } catch (error: unknown) {
-      if (!(error instanceof AdminAuthError)) {
-        await this.signOutAndClear();
-      }
-      throw error;
-    } finally {
-      this.loadingState.set(false);
-    }
+        this.currentUserState.set(data.user);
+        return this.loadCurrentProfile$(data.user.id);
+      }),
+      switchMap((profile) => {
+        if (profile.role !== 'admin' || !profile.is_active) {
+          return this.signOutAndClear$().pipe(
+            switchMap(() =>
+              throwError(
+                () => new AdminAuthError('این حساب کاربری دسترسی ادمین ندارد یا غیرفعال است.'),
+              ),
+            ),
+          );
+        }
+        this.stepState.set('OTP');
+        return this.requestOtp$();
+      }),
+      catchError((error: unknown) => {
+        if (!(error instanceof AdminAuthError)) {
+          return this.signOutAndClear$().pipe(switchMap(() => throwError(() => error)));
+        }
+        return throwError(() => error);
+      }),
+      finalize(() => this.loadingState.set(false)),
+    );
   }
 
-  async sendOtp(): Promise<void> {
-    if (this.loadingState()) return;
+  loginWithPassword(email: string, password: string): Observable<void> {
+    return this.loginWithPassword$(email, password);
+  }
+
+  sendOtp$(): Observable<void> {
+    if (this.loadingState()) return of(undefined);
 
     this.loadingState.set(true);
-    try {
-      await this.requestOtp();
-    } finally {
-      this.loadingState.set(false);
-    }
+    return this.requestOtp$().pipe(finalize(() => this.loadingState.set(false)));
   }
 
-  async verifyOtp(rawCode: string): Promise<void> {
-    if (this.loadingState()) return;
+  sendOtp(): Observable<void> {
+    return this.sendOtp$();
+  }
+
+  verifyOtp$(rawCode: string): Observable<void> {
+    if (this.loadingState()) return of(undefined);
 
     const code = normalizeDigits(rawCode);
     if (!/^\d{6}$/.test(code)) {
-      throw new AdminAuthError('کد تایید باید ۶ رقمی باشد.');
+      return throwError(() => new AdminAuthError('کد تایید باید ۶ رقمی باشد.'));
     }
 
     this.loadingState.set(true);
-    try {
-      const data = await this.invokeOtp({ action: 'verify', code });
-      if (!data.verified || !data.expiresAt) {
-        throw new AdminAuthError(data.error || 'کد تایید نامعتبر یا منقضی است.');
-      }
-
-      this.markMfaVerified(data.expiresAt);
-    } finally {
-      this.loadingState.set(false);
-    }
+    return this.invokeOtp$({ action: 'verify', code }).pipe(
+      tap((data) => {
+        if (!data.verified || !data.expiresAt) {
+          throw new AdminAuthError(data.error || 'کد تایید نامعتبر یا منقضی است.');
+        }
+        this.markMfaVerified(data.expiresAt);
+      }),
+      map(() => undefined),
+      finalize(() => this.loadingState.set(false)),
+    );
   }
 
-  async logout(): Promise<void> {
+  verifyOtp(rawCode: string): Observable<void> {
+    return this.verifyOtp$(rawCode);
+  }
+
+  logout$(): Observable<void> {
     this.loadingState.set(true);
-    try {
-      try {
-        await this.invokeOtp({ action: 'revoke' });
-      } catch {
-        // Signing out revokes the Supabase session even if proof cleanup is unavailable.
-      }
-      await this.supabase.auth.signOut();
-    } finally {
-      this.clearAuthState();
-      this.loadingState.set(false);
-      await this.router.navigateByUrl('/login');
-    }
+
+    return this.invokeOtp$({ action: 'revoke' }).pipe(
+      catchError(() => of(null)), // Proceed with logout even if revoke fails
+      switchMap(() => defer(() => from(this.supabase.auth.signOut()))),
+      catchError(() => of(null)),
+      switchMap(() => {
+        this.clearAuthState();
+        this.loadingState.set(false);
+        return defer(() => from(this.router.navigateByUrl('/login')));
+      }),
+      map(() => undefined),
+      finalize(() => {
+        this.clearAuthState();
+        this.loadingState.set(false);
+      }),
+    );
+  }
+
+  logout(): Observable<void> {
+    return this.logout$();
   }
 
   private registerAuthListener(): void {
@@ -198,71 +236,94 @@ export class AdminAuthService {
       }
 
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        setTimeout(() => void this.synchronizeSession(session));
+        setTimeout(() => this.synchronizeSession$(session).subscribe());
       }
     });
     this.authSubscription = data.subscription;
   }
 
-  private async restoreSession(): Promise<void> {
-    const { data, error } = await this.supabase.auth.getUser();
-    if (error || !data.user) {
-      this.clearAuthState();
-      return;
-    }
+  private restoreSession$(): Observable<void> {
+    return defer(() => from(this.supabase.auth.getUser())).pipe(
+      switchMap(({ data, error }) => {
+        if (error || !data.user) {
+          this.clearAuthState();
+          return of(undefined);
+        }
 
-    this.currentUserState.set(data.user);
-    try {
-      const profile = await this.loadCurrentProfile(data.user.id);
-      if (profile.role !== 'admin' || !profile.is_active) {
-        await this.signOutAndClear();
-        return;
-      }
+        this.currentUserState.set(data.user);
+        return this.loadCurrentProfile$(data.user.id).pipe(
+          switchMap((profile) => {
+            if (profile.role !== 'admin' || !profile.is_active) {
+              return this.signOutAndClear$();
+            }
 
-      const status = await this.invokeOtp({ action: 'status' });
-      if (status.verified && status.expiresAt) {
-        this.markMfaVerified(status.expiresAt);
-      } else {
-        this.is2faVerifiedState.set(false);
-        this.stepState.set('OTP');
-      }
-    } catch {
-      await this.signOutAndClear();
-    }
+            return this.invokeOtp$({ action: 'status' }).pipe(
+              tap((status) => {
+                if (status.verified && status.expiresAt) {
+                  this.markMfaVerified(status.expiresAt);
+                } else {
+                  this.is2faVerifiedState.set(false);
+                  this.stepState.set('OTP');
+                }
+              }),
+              map(() => undefined),
+            );
+          }),
+          catchError(() => this.signOutAndClear$()),
+        );
+      }),
+    );
   }
 
-  private async synchronizeSession(session: Session): Promise<void> {
+  private synchronizeSession$(session: Session): Observable<void> {
     if (session.user.id !== this.currentUserState()?.id) {
       this.clearAuthState();
       this.currentUserState.set(session.user);
     }
-    await this.restoreSession();
+    return this.restoreSession$();
   }
 
-  private async requestOtp(): Promise<void> {
-    const data = await this.invokeOtp({ action: 'send' });
-    if (data.maskedPhone) this.maskedPhoneState.set(data.maskedPhone);
-    this.is2faVerifiedState.set(false);
-    this.stepState.set('OTP');
-    this.startCountdown(data.expiresIn ?? 180);
+  private requestOtp$(): Observable<void> {
+    return this.invokeOtp$({ action: 'send' }).pipe(
+      tap((data) => {
+        if (data.maskedPhone) this.maskedPhoneState.set(data.maskedPhone);
+        this.is2faVerifiedState.set(false);
+        this.stepState.set('OTP');
+        this.startCountdown(data.expiresIn ?? 180);
+      }),
+      map(() => undefined),
+    );
   }
 
-  private async invokeOtp(body: { action: 'send' | 'verify' | 'status' | 'revoke'; code?: string }): Promise<AdminOtpResponse> {
-    const { data, error } = await this.supabase.functions.invoke<AdminOtpResponse>('admin-otp', { body });
-    if (error || !data?.success) {
-      let message = data?.error;
-      const context = (error as { context?: unknown } | null)?.context;
-      if (!message && context instanceof Response) {
-        try {
-          const payload = await context.clone().json() as { error?: unknown };
-          if (typeof payload.error === 'string') message = payload.error;
-        } catch {
-          // Use the generic message when the function response is not JSON.
+  private invokeOtp$(body: {
+    action: 'send' | 'verify' | 'status' | 'revoke';
+    code?: string;
+  }): Observable<AdminOtpResponse> {
+    return defer(() =>
+      from(this.supabase.functions.invoke<AdminOtpResponse>('admin-otp', { body })),
+    ).pipe(
+      switchMap(({ data, error }) => {
+        if (error || !data?.success) {
+          let message = data?.error;
+          const context = (error as { context?: unknown } | null)?.context;
+          if (!message && context instanceof Response) {
+            return defer(() => from(context.clone().json())).pipe(
+              catchError(() => of({})),
+              switchMap((payload: { error?: unknown }) => {
+                if (typeof payload?.error === 'string') message = payload.error;
+                return throwError(
+                  () => new AdminAuthError(message || 'ارتباط با سرویس احراز هویت ممکن نشد.'),
+                );
+              }),
+            );
+          }
+          return throwError(
+            () => new AdminAuthError(message || 'ارتباط با سرویس احراز هویت ممکن نشد.'),
+          );
         }
-      }
-      throw new AdminAuthError(message || 'ارتباط با سرویس احراز هویت ممکن نشد.');
-    }
-    return data;
+        return of(data);
+      }),
+    );
   }
 
   private markMfaVerified(expiresAt: string): void {
@@ -277,11 +338,14 @@ export class AdminAuthService {
     this.stepState.set('AUTHENTICATED');
     if (this.timerInterval) clearInterval(this.timerInterval);
     if (this.mfaExpiryTimeout) clearTimeout(this.mfaExpiryTimeout);
-    this.mfaExpiryTimeout = setTimeout(() => {
-      this.is2faVerifiedState.set(false);
-      this.stepState.set('OTP');
-      void this.router.navigateByUrl('/login');
-    }, Math.min(expiresInMs, 2_147_483_647));
+    this.mfaExpiryTimeout = setTimeout(
+      () => {
+        this.is2faVerifiedState.set(false);
+        this.stepState.set('OTP');
+        defer(() => from(this.router.navigateByUrl('/login'))).subscribe();
+      },
+      Math.min(expiresInMs, 2_147_483_647),
+    );
   }
 
   private startCountdown(seconds: number): void {
@@ -299,27 +363,32 @@ export class AdminAuthService {
     }, 1000);
   }
 
-  private async loadCurrentProfile(userId: string): Promise<UserProfile> {
-    const { data, error } = await this.supabase
-      .from('profiles')
-      .select('id, full_name, phone, role, is_active')
-      .eq('id', userId)
-      .maybeSingle<UserProfile>();
-
-    if (error || !data) {
-      throw new AdminAuthError('پروفایل کاربری یافت نشد.');
-    }
-
-    this.currentProfileState.set(data);
-    return data;
+  private loadCurrentProfile$(userId: string): Observable<UserProfile> {
+    return defer(() =>
+      from(
+        this.supabase
+          .from('profiles')
+          .select('id, full_name, phone, role, is_active')
+          .eq('id', userId)
+          .maybeSingle<UserProfile>(),
+      ),
+    ).pipe(
+      switchMap(({ data, error }) => {
+        if (error || !data) {
+          return throwError(() => new AdminAuthError('پروفایل کاربری یافت نشد.'));
+        }
+        this.currentProfileState.set(data);
+        return of(data);
+      }),
+    );
   }
 
-  private async signOutAndClear(): Promise<void> {
-    try {
-      await this.supabase.auth.signOut();
-    } finally {
-      this.clearAuthState();
-    }
+  private signOutAndClear$(): Observable<void> {
+    return defer(() => from(this.supabase.auth.signOut())).pipe(
+      catchError(() => of(null)),
+      tap(() => this.clearAuthState()),
+      map(() => undefined),
+    );
   }
 
   private clearTimers(): void {

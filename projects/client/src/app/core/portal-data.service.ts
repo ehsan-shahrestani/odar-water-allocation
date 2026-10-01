@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { Observable, defer, from } from 'rxjs';
 import { faNumber } from './mock-data';
 import { SupabaseService } from './supabase.service';
 
@@ -286,7 +287,7 @@ export class PortalDataService {
         } | null;
         const name = item.display_name?.trim() || profile?.full_name || 'کشاورز';
         const phone = profile?.phone || '';
-        const farmerProfileId = profile?.id || item.farmer_id;
+        const farmerProfileId = profile?.id || item.farmer_id || item.id;
 
         if (!wy) {
           return {
@@ -550,26 +551,17 @@ export class PortalDataService {
     wellId: string;
     waterYearId: string;
   }): Promise<FarmerWellDetail> {
-    const emptyResult: FarmerWellDetail = {
-      farmer: { id: params.farmerId, name: '', phone: '' },
-      wellFarmerId: '',
-      allocationId: null,
-      quotaHours: 0,
-      usedHours: 0,
-      remainingHours: 0,
-      usages: [],
-    };
-
     // 1. Find the well_farmer record for this farmer in this specific well
     const { data: wf, error: wfError } = await this.supabase
       .from('well_farmers')
       .select('id, farmer_id, display_name, profiles ( id, full_name, phone )')
       .eq('well_id', params.wellId)
-      .eq('farmer_id', params.farmerId)
+      .or(`farmer_id.eq.${params.farmerId},id.eq.${params.farmerId}`)
+      .limit(1)
       .maybeSingle();
 
     if (wfError || !wf) {
-      return emptyResult;
+      throw new Error('اطلاعات کشاورز در این چاه یافت نشد.');
     }
 
     const profile = wf.profiles as unknown as {
@@ -577,12 +569,26 @@ export class PortalDataService {
       full_name: string;
       phone: string;
     } | null;
-    emptyResult.farmer = {
-      id: profile?.id || params.farmerId,
+
+    const farmerInfo = {
+      id: profile?.id || wf.farmer_id || params.farmerId,
       name: wf.display_name?.trim() || profile?.full_name || 'کشاورز',
       phone: profile?.phone || '',
     };
-    emptyResult.wellFarmerId = wf.id;
+    const wellFarmerId = wf.id;
+
+    // If no water year is specified, return the farmer info without allocation
+    if (!params.waterYearId) {
+      return {
+        farmer: farmerInfo,
+        wellFarmerId,
+        allocationId: null,
+        quotaHours: 0,
+        usedHours: 0,
+        remainingHours: 0,
+        usages: [],
+      };
+    }
 
     // 2. Find allocation for this well_farmer in this water year
     const { data: alloc } = await this.supabase
@@ -593,7 +599,15 @@ export class PortalDataService {
       .maybeSingle();
 
     if (!alloc) {
-      return emptyResult;
+      return {
+        farmer: farmerInfo,
+        wellFarmerId,
+        allocationId: null,
+        quotaHours: 0,
+        usedHours: 0,
+        remainingHours: 0,
+        usages: [],
+      };
     }
 
     const quotaHours = Number(alloc.allocated_hours) || 0;
@@ -610,8 +624,8 @@ export class PortalDataService {
     const remainingHours = Math.max(0, Math.round((quotaHours - usedHours) * 100) / 100);
 
     return {
-      farmer: emptyResult.farmer,
-      wellFarmerId: wf.id,
+      farmer: farmerInfo,
+      wellFarmerId,
       allocationId: alloc.id,
       quotaHours: Math.round(quotaHours * 100) / 100,
       usedHours: Math.round(usedHours * 100) / 100,
@@ -709,4 +723,147 @@ export class PortalDataService {
       };
     }
   }
+
+  /**
+   * Updates the display name of a farmer in the well
+   */
+  async updateFarmerDisplayName(wellFarmerId: string, displayName: string): Promise<void> {
+    const trimmed = displayName.trim();
+    if (!trimmed) {
+      throw new Error('نام کشاورز نمی‌تواند خالی باشد.');
+    }
+
+    const { error } = await this.supabase
+      .from('well_farmers')
+      .update({ display_name: trimmed })
+      .eq('id', wellFarmerId);
+
+    if (error) {
+      throw new Error(`خطا در ویرایش نام کشاورز: ${error.message}`);
+    }
+  }
+
+  /**
+   * Removes a farmer from a well
+   */
+  async removeFarmerFromWell(wellFarmerId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('well_farmers')
+      .delete()
+      .eq('id', wellFarmerId);
+
+    if (error) {
+      throw new Error(`خطا در حذف کشاورز از چاه: ${error.message}`);
+    }
+  }
+
+  /**
+   * Updates the name of a well
+   */
+  async updateWellName(wellId: string, name: string): Promise<void> {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      throw new Error('نام چاه نمی‌تواند خالی باشد.');
+    }
+
+    const { error } = await this.supabase
+      .from('wells')
+      .update({ name: trimmed })
+      .eq('id', wellId);
+
+    if (error) {
+      throw new Error(`خطا در ویرایش نام چاه: ${error.message}`);
+    }
+  }
+
+  // --- RxJS Observable API Wrappers ($) ---
+
+  getFarmerDashboard$(farmerId: string): Observable<FarmerDashboardData> {
+    return defer(() => from(this.getFarmerDashboard(farmerId)));
+  }
+
+  getRepresentativeDashboard$(repId: string): Observable<RepresentativeDashboardData> {
+    return defer(() => from(this.getRepresentativeDashboard(repId)));
+  }
+
+  getWaterYearsForWell$(wellId: string): Observable<WaterYearItem[]> {
+    return defer(() => from(this.getWaterYearsForWell(wellId)));
+  }
+
+  getFarmerDetailForWell$(params: {
+    farmerId: string;
+    wellId: string;
+    waterYearId: string;
+  }): Observable<FarmerWellDetail> {
+    return defer(() => from(this.getFarmerDetailForWell(params)));
+  }
+
+  upsertFarmerAllocation$(params: {
+    waterYearId: string;
+    wellFarmerId: string;
+    allocatedHours: number;
+  }): Observable<string> {
+    return defer(() => from(this.upsertFarmerAllocation(params)));
+  }
+
+  recordWaterUsage$(params: {
+    allocationId: string;
+    consumedHours: number;
+    description?: string;
+    usedAt?: string;
+    createdBy: string;
+    farmerPhone?: string;
+    farmerName?: string;
+    remainingHours?: number;
+    wellId?: string;
+  }): Observable<{ smsSent: boolean; message?: string; cost?: number }> {
+    return defer(() => from(this.recordWaterUsage(params)));
+  }
+
+  addFarmerToWell$(params: {
+    wellId: string;
+    displayName: string;
+    phone: string;
+    allocatedHours?: number;
+    waterYearId?: string;
+  }): Observable<AddFarmerToWellResult> {
+    return defer(() => from(this.addFarmerToWell(params)));
+  }
+
+  createWaterYear$(params: {
+    wellId: string;
+    description: string;
+    startDate: string;
+    endDate: string;
+    hoursPerShare?: number | null;
+  }): Observable<WaterYearItem> {
+    return defer(() => from(this.createWaterYear(params)));
+  }
+
+  notifyFarmerQuotaAssigned$(params: {
+    wellId: string;
+    wellName?: string;
+    waterYearId?: string;
+    farmerId?: string;
+    farmerPhone?: string;
+    farmerName?: string;
+    allocatedHours: number;
+    hoursPerShare?: number | null;
+    includeHoursPerShare?: boolean;
+  }): Observable<{ success: boolean; message?: string; cost?: number }> {
+    return defer(() => from(this.notifyFarmerQuotaAssigned(params)));
+  }
+
+  updateFarmerDisplayName$(wellFarmerId: string, displayName: string): Observable<void> {
+    return defer(() => from(this.updateFarmerDisplayName(wellFarmerId, displayName)));
+  }
+
+  removeFarmerFromWell$(wellFarmerId: string): Observable<void> {
+    return defer(() => from(this.removeFarmerFromWell(wellFarmerId)));
+  }
+
+  updateWellName$(wellId: string, name: string): Observable<void> {
+    return defer(() => from(this.updateWellName(wellId, name)));
+  }
 }
+

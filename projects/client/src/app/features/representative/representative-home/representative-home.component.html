@@ -90,6 +90,17 @@
         <div class="dash-title-wrap">
           <div class="flex items-center gap-2">
             <h1 class="dash-main-title">{{ dashboard()?.well?.name }}</h1>
+            <button
+              type="button"
+              class="btn-inline-edit"
+              (click)="openEditWellModal()"
+              title="ویرایش نام چاه"
+              aria-label="ویرایش نام چاه"
+            >
+              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+              </svg>
+            </button>
             <div class="dash-status-badge">
               <span class="pulse-dot"></span>
               <span>سال آبی {{ dashboard()?.waterYear?.name || 'تعریف‌نشده' }}</span>
@@ -654,4 +665,59 @@
       </div>
     </div>
   }
+
+  <!-- ==================== MODAL: EDIT WELL NAME ==================== -->
+  @if (showEditWellModal()) {
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-edit-well-title">
+      <button
+        type="button"
+        class="modal-overlay"
+        (click)="closeEditWellModal()"
+        aria-label="بستن پنجره"
+      ></button>
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h2 id="modal-edit-well-title" class="modal-title">ویرایش نام چاه</h2>
+          <button type="button" class="modal-close" (click)="closeEditWellModal()" aria-label="بستن">
+            ×
+          </button>
+        </div>
+
+        @if (editWellError()) {
+          <div class="modal-alert" role="alert">{{ editWellError() }}</div>
+        }
+
+        <form (submit)="$event.preventDefault(); submitEditWell()" class="modal-form">
+          <div class="form-group">
+            <label for="edit-well-name-input" class="form-label">نام چاه</label>
+            <input
+              id="edit-well-name-input"
+              type="text"
+              class="form-input"
+              [value]="editWellName()"
+              (input)="editWellName.set($any($event.target).value)"
+              placeholder="نام جدید چاه را وارد کنید"
+              required
+            />
+          </div>
+
+          <div class="modal-actions mt-4">
+            <button app-button type="submit" [disabled]="submittingWell() || !editWellName().trim()">
+              {{ submittingWell() ? 'در حال ذخیره...' : 'ذخیره نام چاه' }}
+            </button>
+            <button
+              app-button
+              type="button"
+              variant="secondary"
+              (click)="closeEditWellModal()"
+              [disabled]="submittingWell()"
+            >
+              انصراف
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
 </div>
+

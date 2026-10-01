@@ -3,19 +3,18 @@ import { CanActivateFn, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthService } from './auth.service';
 
-export const roleGuard: CanActivateFn = (route) => {
+/** Prevents authenticated users from reaching the login page. */
+export const loginGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
   return auth.initializeSession$().pipe(
     map(() => {
-      const currentRole = auth.userRole();
-      const expectedRole = route.data['role'];
-
-      if (currentRole === expectedRole) {
-        return true;
+      const role = auth.userRole();
+      if (role) {
+        return router.parseUrl('/' + role);
       }
-      return router.parseUrl(currentRole ? '/' + currentRole : '/login');
+      return true;
     }),
   );
 };

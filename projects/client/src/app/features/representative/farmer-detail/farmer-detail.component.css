@@ -126,6 +126,28 @@
   line-height: 1.25;
 }
 
+.btn-inline-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #f5f5f4;
+  border: 1px solid var(--line, #e7e5e4);
+  color: var(--ink-muted, #78716c);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.btn-inline-edit:hover {
+  background: var(--mint-50, #f0fdf4);
+  color: var(--forest-700, #15803d);
+  border-color: rgba(190, 218, 202, 0.95);
+}
+
 .profile-phone {
   display: inline-flex;
   align-items: center;
@@ -322,6 +344,30 @@
   border-color: var(--forest-600);
   transform: translateY(-1px);
 }
+
+.btn-act-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  background: #ffffff;
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1.5px solid #fecaca;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.btn-act-danger:hover {
+  background: #fef2f2;
+  border-color: #f87171;
+  transform: translateY(-1px);
+}
+
 
 /* ==================== 4. MAIN CONTENT: WATER YEARS & USAGES ==================== */
 .detail-main-col {
@@ -755,4 +801,28 @@
 
 .modal-actions button {
   flex: 1;
+}
+
+.empty-wy-alert-card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1.5px solid rgba(215, 229, 220, 0.95);
+  box-shadow: 0 4px 18px rgba(7, 72, 45, 0.04);
+  padding: 40px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.empty-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #f4faf6;
+  border: 1px solid rgba(190, 218, 202, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
 }

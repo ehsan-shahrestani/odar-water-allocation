@@ -13,7 +13,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideAppInitializer(() => inject(AdminAuthService).initializeSession()),
+    provideAppInitializer(() => inject(AdminAuthService).initializeSession$()),
     {
       provide: SUPABASE_AUTH_STORAGE_OPTIONS,
       useValue: {

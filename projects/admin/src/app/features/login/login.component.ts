@@ -1,5 +1,8 @@
-import { Component, ElementRef, afterNextRender, inject, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, afterNextRender, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
+import { from } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { ButtonComponent } from '@shared/button/button.component';
 import { InputComponent } from '@shared/input/input.component';
 import { PageHeaderComponent } from '@shared/page-header/page-header.component';
@@ -148,6 +151,7 @@ import { AdminAuthError, AdminAuthService } from '../../core/admin-auth.service'
 export class AdminLoginComponent {
   protected readonly auth = inject(AdminAuthService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   private readonly emailInput = viewChild<ElementRef<HTMLInputElement>>('emailInput');
   private readonly passwordInput = viewChild<ElementRef<HTMLInputElement>>('passwordInput');
@@ -161,7 +165,7 @@ export class AdminLoginComponent {
   constructor() {
     afterNextRender(() => {
       if (this.auth.isFullyAuthenticated()) {
-        void this.router.navigateByUrl('/admin');
+        from(this.router.navigateByUrl('/admin')).pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
         return;
       }
       this.focusInitialField();
@@ -184,7 +188,7 @@ export class AdminLoginComponent {
     }
   }
 
-  protected async submitCredentials(): Promise<void> {
+  protected submitCredentials(): void {
     if (this.auth.isLoading()) return;
     this.error.set('');
 
@@ -202,18 +206,23 @@ export class AdminLoginComponent {
     this.email.set(emailVal);
     this.password.set(passwordVal);
 
-    try {
-      await this.auth.loginWithPassword(emailVal, passwordVal);
-      this.password.set('');
-      setTimeout(() => this.otpInput()?.nativeElement.focus(), 100);
-    } catch (err: unknown) {
-      this.error.set(
-        err instanceof AdminAuthError ? err.userMessage : 'ورود با خطا مواجه شد. دوباره تلاش کنید.',
-      );
-    }
+    this.auth
+      .loginWithPassword$(emailVal, passwordVal)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.password.set('');
+          setTimeout(() => this.otpInput()?.nativeElement.focus(), 100);
+        },
+        error: (err: unknown) => {
+          this.error.set(
+            err instanceof AdminAuthError ? err.userMessage : 'ورود با خطا مواجه شد. دوباره تلاش کنید.',
+          );
+        },
+      });
   }
 
-  protected async submitOtp(): Promise<void> {
+  protected submitOtp(): void {
     if (this.auth.isLoading()) return;
     this.error.set('');
 
@@ -224,33 +233,49 @@ export class AdminLoginComponent {
       return;
     }
 
-    try {
-      await this.auth.verifyOtp(code);
-      await this.router.navigateByUrl('/admin');
-    } catch (err: unknown) {
-      this.error.set(
-        err instanceof AdminAuthError ? err.userMessage : 'کد تایید نامعتبر یا منقضی است.',
-      );
-    }
+    this.auth
+      .verifyOtp$(code)
+      .pipe(
+        switchMap(() => from(this.router.navigateByUrl('/admin'))),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        error: (err: unknown) => {
+          this.error.set(
+            err instanceof AdminAuthError ? err.userMessage : 'کد تایید نامعتبر یا منقضی است.',
+          );
+        },
+      });
   }
 
-  protected async resendOtp(): Promise<void> {
+  protected resendOtp(): void {
     this.error.set('');
-    try {
-      await this.auth.sendOtp();
-      this.otpCode.set('');
-      this.otpInput()?.nativeElement.focus();
-    } catch (err: unknown) {
-      this.error.set(
-        err instanceof AdminAuthError ? err.userMessage : 'ارسال مجدد پیامک با خطا مواجه شد.',
-      );
-    }
+    this.auth
+      .sendOtp$()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.otpCode.set('');
+          this.otpInput()?.nativeElement.focus();
+        },
+        error: (err: unknown) => {
+          this.error.set(
+            err instanceof AdminAuthError ? err.userMessage : 'ارسال مجدد پیامک با خطا مواجه شد.',
+          );
+        },
+      });
   }
 
-  protected async backToCredentials(): Promise<void> {
-    await this.auth.logout();
-    this.otpCode.set('');
-    this.error.set('');
-    setTimeout(() => this.emailInput()?.nativeElement.focus(), 100);
+  protected backToCredentials(): void {
+    this.auth
+      .logout$()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.otpCode.set('');
+          this.error.set('');
+          setTimeout(() => this.emailInput()?.nativeElement.focus(), 100);
+        },
+      });
   }
 }

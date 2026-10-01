@@ -1,5 +1,7 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { catchError, finalize, from, of, switchMap, tap } from 'rxjs';
 import { toast } from 'ngx-sonner';
 import { AuthService } from '../../../core/auth.service';
 import {
@@ -24,8 +26,10 @@ import {
 })
 export class FarmerDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly portalData = inject(PortalDataService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly loading = signal(true);
   protected readonly error = signal('');
@@ -41,6 +45,15 @@ export class FarmerDetailComponent implements OnInit {
   // Modals
   protected readonly showUsageModal = signal(false);
   protected readonly showQuotaModal = signal(false);
+  protected readonly showEditFarmerModal = signal(false);
+  protected readonly editFarmerName = signal('');
+  protected readonly editFarmerError = signal('');
+  protected readonly submittingEditFarmer = signal(false);
+
+  protected readonly showDeleteFarmerModal = signal(false);
+  protected readonly deleteFarmerError = signal('');
+  protected readonly submittingDeleteFarmer = signal(false);
+
   protected readonly submitting = signal(false);
   protected readonly modalError = signal('');
 
@@ -84,80 +97,79 @@ export class FarmerDetailComponent implements OnInit {
   protected readonly number = (v: number | string | undefined | null) => this.formatNumber(v);
 
   ngOnInit(): void {
-    void this.initialize();
+    this.route.paramMap.pipe(
+      takeUntilDestroyed(this.destroyRef),
+      switchMap((params) => {
+        const fId = params.get('farmerId');
+        if (!fId) {
+          throw new Error('شناسه کشاورز نامعتبر است.');
+        }
+        this.farmerId.set(fId);
+        this.loading.set(true);
+        this.error.set('');
+
+        return this.auth.ensureProfile$().pipe(
+          switchMap((profile) => this.portalData.getRepresentativeDashboard$(profile.id)),
+          switchMap((dashboard) => {
+            if (!dashboard.well) {
+              throw new Error('چاهی به حساب شما متصل نیست.');
+            }
+            this.wellId.set(dashboard.well.id);
+            this.wellName.set(dashboard.well.name);
+
+            return this.portalData.getWaterYearsForWell$(dashboard.well.id).pipe(
+              switchMap((years) => {
+                this.waterYears.set(years);
+                const activeYear = years.find((y) => y.isActive) ?? (years.length > 0 ? years[0] : null);
+                const yearId = activeYear ? activeYear.id : '';
+                this.selectedWaterYearId.set(yearId);
+
+                // Always load farmer detail, even if 0 water years
+                return this.portalData.getFarmerDetailForWell$({
+                  farmerId: fId,
+                  wellId: dashboard.well!.id,
+                  waterYearId: yearId,
+                });
+              }),
+            );
+          }),
+        );
+      }),
+    ).subscribe({
+      next: (detail) => {
+        this.farmerDetail.set(detail);
+        this.loading.set(false);
+      },
+      error: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'خطا در بارگذاری اطلاعات پرونده کشاورز';
+        this.error.set(msg);
+        this.loading.set(false);
+        toast.error(msg);
+      },
+    });
   }
 
-  private async initialize(): Promise<void> {
-    this.loading.set(true);
-    this.error.set('');
-
-    try {
-      // Get rep profile
-      const profile = this.auth.currentProfile();
-      if (!profile?.id) {
-        await this.auth.initializeSession();
-      }
-      const repId = this.auth.currentProfile()?.id;
-      if (!repId) {
-        throw new Error('اطلاعات کاربری نماینده یافت نشد.');
-      }
-
-      // Get farmerId from route
-      const fId = this.route.snapshot.paramMap.get('farmerId');
-      if (!fId) {
-        throw new Error('شناسه کشاورز نامعتبر است.');
-      }
-      this.farmerId.set(fId);
-
-      // Get the representative's dashboard to find the well
-      const dashboard = await this.portalData.getRepresentativeDashboard(repId);
-      if (!dashboard.well) {
-        throw new Error('چاهی به حساب شما متصل نیست.');
-      }
-      this.wellId.set(dashboard.well.id);
-      this.wellName.set(dashboard.well.name);
-
-      // Fetch water years for this well
-      const years = await this.portalData.getWaterYearsForWell(dashboard.well.id);
-      this.waterYears.set(years);
-
-      if (years.length > 0) {
-        // Select the active (latest) water year by default
-        const activeYear = years.find((y) => y.isActive) ?? years[0];
-        this.selectedWaterYearId.set(activeYear.id);
-        await this.loadFarmerDetail(fId, dashboard.well.id, activeYear.id);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'خطا در بارگذاری اطلاعات';
-      this.error.set(msg);
-      toast.error(msg);
-    } finally {
-      this.loading.set(false);
-    }
-  }
-
-  protected async selectWaterYear(yearId: string): Promise<void> {
+  protected selectWaterYear(yearId: string): void {
     if (yearId === this.selectedWaterYearId()) return;
     this.selectedWaterYearId.set(yearId);
     this.loading.set(true);
 
-    try {
-      await this.loadFarmerDetail(this.farmerId(), this.wellId(), yearId);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'خطا در بارگذاری اطلاعات';
-      toast.error(msg);
-    } finally {
-      this.loading.set(false);
-    }
-  }
-
-  private async loadFarmerDetail(farmerId: string, wellId: string, waterYearId: string): Promise<void> {
-    const detail = await this.portalData.getFarmerDetailForWell({
-      farmerId,
-      wellId,
-      waterYearId,
+    this.portalData.getFarmerDetailForWell$({
+      farmerId: this.farmerId(),
+      wellId: this.wellId(),
+      waterYearId: yearId,
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.loading.set(false)),
+    ).subscribe({
+      next: (detail) => {
+        this.farmerDetail.set(detail);
+      },
+      error: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'خطا در بارگذاری اطلاعات';
+        toast.error(msg);
+      },
     });
-    this.farmerDetail.set(detail);
   }
 
   // --- Usage Modal ---
@@ -176,7 +188,7 @@ export class FarmerDetailComponent implements OnInit {
     this.modalError.set('');
   }
 
-  protected async submitUsage(): Promise<void> {
+  protected submitUsage(): void {
     const detail = this.farmerDetail();
     if (!detail?.allocationId) {
       const msg = 'برای این کشاورز هنوز سهمیه‌ای ثبت نشده است.';
@@ -209,33 +221,42 @@ export class FarmerDetailComponent implements OnInit {
     const newRemaining = Number((detail.remainingHours - hours).toFixed(2));
     const usedAtIso = this.usageDateIso() ? `${this.usageDateIso()}T12:00:00Z` : undefined;
 
-    try {
-      const result = await this.portalData.recordWaterUsage({
-        allocationId: detail.allocationId,
-        consumedHours: hours,
-        description: this.usageDesc(),
-        usedAt: usedAtIso,
-        createdBy: repId,
-        farmerPhone: detail.farmer.phone,
-        farmerName: detail.farmer.name,
-        remainingHours: newRemaining,
-        wellId: this.wellId(),
-      });
-
-      this.closeUsageModal();
-      if (result.smsSent) {
-        toast.success(`مصرف ${faNumber(hours)} ساعت ثبت و پیامک ارسال شد.`);
-      } else {
-        toast.success(`مصرف ${faNumber(hours)} ساعت ثبت شد.`);
-      }
-      await this.loadFarmerDetail(this.farmerId(), this.wellId(), this.selectedWaterYearId());
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'خطا در ثبت مصرف';
-      this.modalError.set(msg);
-      toast.error(msg);
-    } finally {
-      this.submitting.set(false);
-    }
+    this.portalData.recordWaterUsage$({
+      allocationId: detail.allocationId,
+      consumedHours: hours,
+      description: this.usageDesc(),
+      usedAt: usedAtIso,
+      createdBy: repId,
+      farmerPhone: detail.farmer.phone,
+      farmerName: detail.farmer.name,
+      remainingHours: newRemaining,
+      wellId: this.wellId(),
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      switchMap((result) => {
+        this.closeUsageModal();
+        if (result.smsSent) {
+          toast.success(`مصرف ${faNumber(hours)} ساعت ثبت و پیامک ارسال شد.`);
+        } else {
+          toast.success(`مصرف ${faNumber(hours)} ساعت ثبت شد.`);
+        }
+        return this.portalData.getFarmerDetailForWell$({
+          farmerId: this.farmerId(),
+          wellId: this.wellId(),
+          waterYearId: this.selectedWaterYearId(),
+        });
+      }),
+      finalize(() => this.submitting.set(false)),
+    ).subscribe({
+      next: (updatedDetail) => {
+        this.farmerDetail.set(updatedDetail);
+      },
+      error: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'خطا در ثبت مصرف';
+        this.modalError.set(msg);
+        toast.error(msg);
+      },
+    });
   }
 
   // --- Quota Modal ---
@@ -252,13 +273,14 @@ export class FarmerDetailComponent implements OnInit {
     this.modalError.set('');
   }
 
-  protected async submitQuota(): Promise<void> {
+  protected submitQuota(): void {
     const detail = this.farmerDetail();
     const waterYearId = this.selectedWaterYearId();
 
     if (!detail?.wellFarmerId || !waterYearId) {
-      const msg = 'اطلاعات لازم یافت نشد.';
+      const msg = 'اطلاعات سال آبی یا کشاورز یافت نشد. لطفاً ابتدا سال آبی را تعریف کنید.';
       this.modalError.set(msg);
+      toast.error(msg);
       return;
     }
 
@@ -273,41 +295,143 @@ export class FarmerDetailComponent implements OnInit {
     this.submitting.set(true);
     this.modalError.set('');
 
-    try {
-      await this.portalData.upsertFarmerAllocation({
-        waterYearId,
-        wellFarmerId: detail.wellFarmerId,
-        allocatedHours: hours,
-      });
+    this.portalData.upsertFarmerAllocation$({
+      waterYearId,
+      wellFarmerId: detail.wellFarmerId,
+      allocatedHours: hours,
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      switchMap(() => {
+        this.closeQuotaModal();
+        toast.success(`سهمیه ${faNumber(hours)} ساعت ذخیره شد.`);
 
-      this.closeQuotaModal();
-      toast.success(`سهمیه ${faNumber(hours)} ساعت ذخیره شد.`);
+        const selectedWy = this.selectedWaterYear();
+        const notify$ = hours > 0
+          ? this.portalData.notifyFarmerQuotaAssigned$({
+              wellId: this.wellId(),
+              wellName: this.wellName(),
+              waterYearId,
+              farmerId: this.farmerId(),
+              farmerPhone: detail.farmer.phone,
+              farmerName: detail.farmer.name,
+              allocatedHours: hours,
+              hoursPerShare: selectedWy?.hoursPerShare,
+              includeHoursPerShare: this.quotaModalIncludeHoursPerShare(),
+            }).pipe(
+              catchError(() => of({ success: false, message: 'عدم ارسال پیامک' })),
+              tap((smsRes) => {
+                if (smsRes.success) {
+                  toast.success('پیامک سهمیه سال آبی برای کشاورز ارسال شد.');
+                }
+              }),
+            )
+          : of({ success: false });
 
-      const selectedWy = this.selectedWaterYear();
-      this.portalData
-        .notifyFarmerQuotaAssigned({
-          wellId: this.wellId(),
-          waterYearId,
-          farmerId: this.farmerId(),
-          farmerPhone: detail.farmer.phone,
-          farmerName: detail.farmer.name,
-          allocatedHours: hours,
-          hoursPerShare: selectedWy?.hoursPerShare,
-          includeHoursPerShare: this.quotaModalIncludeHoursPerShare(),
-        })
-        .then((smsRes) => {
-          if (smsRes.success) {
-            toast.success('پیامک سهمیه سال آبی برای کشاورز ارسال شد.');
-          }
-        });
+        return notify$.pipe(
+          switchMap(() => this.portalData.getFarmerDetailForWell$({
+            farmerId: this.farmerId(),
+            wellId: this.wellId(),
+            waterYearId,
+          })),
+        );
+      }),
+      finalize(() => this.submitting.set(false)),
+    ).subscribe({
+      next: (updatedDetail) => {
+        this.farmerDetail.set(updatedDetail);
+      },
+      error: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'خطا در ذخیره سهمیه';
+        this.modalError.set(msg);
+        toast.error(msg);
+      },
+    });
+  }
 
-      await this.loadFarmerDetail(this.farmerId(), this.wellId(), waterYearId);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'خطا در ذخیره سهمیه';
-      this.modalError.set(msg);
+  // --- Edit Farmer Modal Logic ---
+  protected openEditFarmerModal(): void {
+    const current = this.farmerDetail()?.farmer.name || '';
+    this.editFarmerName.set(current);
+    this.editFarmerError.set('');
+    this.showEditFarmerModal.set(true);
+  }
+
+  protected closeEditFarmerModal(): void {
+    this.showEditFarmerModal.set(false);
+    this.editFarmerError.set('');
+  }
+
+  protected submitEditFarmer(): void {
+    const detail = this.farmerDetail();
+    const name = this.editFarmerName().trim();
+    if (!detail?.wellFarmerId) return;
+
+    if (!name) {
+      const msg = 'نام کشاورز نمی‌تواند خالی باشد.';
+      this.editFarmerError.set(msg);
       toast.error(msg);
-    } finally {
-      this.submitting.set(false);
+      return;
     }
+
+    this.submittingEditFarmer.set(true);
+    this.editFarmerError.set('');
+
+    this.portalData.updateFarmerDisplayName$(detail.wellFarmerId, name).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      switchMap(() => {
+        this.closeEditFarmerModal();
+        toast.success('نام کشاورز با موفقیت ویرایش شد.');
+        return this.portalData.getFarmerDetailForWell$({
+          farmerId: this.farmerId(),
+          wellId: this.wellId(),
+          waterYearId: this.selectedWaterYearId(),
+        });
+      }),
+      finalize(() => this.submittingEditFarmer.set(false)),
+    ).subscribe({
+      next: (updatedDetail) => {
+        this.farmerDetail.set(updatedDetail);
+      },
+      error: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'خطا در ویرایش نام کشاورز';
+        this.editFarmerError.set(msg);
+        toast.error(msg);
+      },
+    });
+  }
+
+  // --- Delete Farmer Modal Logic ---
+  protected openDeleteFarmerModal(): void {
+    this.deleteFarmerError.set('');
+    this.showDeleteFarmerModal.set(true);
+  }
+
+  protected closeDeleteFarmerModal(): void {
+    this.showDeleteFarmerModal.set(false);
+    this.deleteFarmerError.set('');
+  }
+
+  protected submitDeleteFarmer(): void {
+    const detail = this.farmerDetail();
+    if (!detail?.wellFarmerId) return;
+
+    this.submittingDeleteFarmer.set(true);
+    this.deleteFarmerError.set('');
+
+    this.portalData.removeFarmerFromWell$(detail.wellFarmerId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      switchMap(() => from(this.router.navigate(['/representative/farmers']))),
+      finalize(() => this.submittingDeleteFarmer.set(false)),
+    ).subscribe({
+      next: () => {
+        this.closeDeleteFarmerModal();
+        toast.success(`«${detail.farmer.name}» با موفقیت از چاه حذف شد.`);
+      },
+      error: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'خطا در حذف کشاورز از چاه';
+        this.deleteFarmerError.set(msg);
+        toast.error(msg);
+      },
+    });
   }
 }

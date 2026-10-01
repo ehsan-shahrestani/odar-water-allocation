@@ -450,6 +450,16 @@ dt {
 .app-button.secondary:hover {
   background: #edf5ef;
 }
+.app-button.danger {
+  color: #ffffff;
+  background: linear-gradient(135deg, #b91c1c, #dc2626);
+  border-color: #991b1b;
+  box-shadow: 0 10px 22px rgb(220 38 38 / 20%);
+}
+.app-button.danger:hover {
+  filter: brightness(0.95);
+  box-shadow: 0 13px 25px rgb(220 38 38 / 28%);
+}
 .input-group {
   display: block;
 }

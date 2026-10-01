@@ -1,6 +1,8 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormField, form, maxLength, required, submit, validate } from '@angular/forms/signals';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormField, form, maxLength, required, validate } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
+import { catchError, finalize, of, switchMap, tap } from 'rxjs';
 import { toast } from 'ngx-sonner';
 import { AuthService, normalizeIranianMobile } from '../../../core/auth.service';
 import {
@@ -32,12 +34,14 @@ export function normalizeName(name: string): string {
 export class RepresentativeHomeComponent implements OnInit {
   protected readonly auth = inject(AuthService);
   private readonly portalData = inject(PortalDataService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly loading = signal(true);
   protected readonly error = signal('');
   protected readonly dashboard = signal<RepresentativeDashboardData | null>(null);
   protected readonly waterYears = signal<WaterYearItem[]>([]);
   protected readonly searchQuery = signal('');
+
   protected formatNumber(value: number | string | undefined | null): string {
     if (value === null || value === undefined || value === '') return '';
     const str = String(value);
@@ -52,10 +56,18 @@ export class RepresentativeHomeComponent implements OnInit {
   // Modals
   protected readonly showUsageModal = signal(false);
   protected readonly showAddFarmerModal = signal(false);
-  protected readonly submitting = signal(false);
-  protected readonly modalError = signal('');
+  protected readonly showAddWaterYearModal = signal(false);
+  protected readonly showEditWellModal = signal(false);
+  protected readonly editWellName = signal('');
+  protected readonly editWellError = signal('');
+  protected readonly submittingWell = signal(false);
 
-  // Usage form state
+  protected readonly submitting = signal(false);
+  protected readonly submittingWY = signal(false);
+  protected readonly modalError = signal('');
+  protected readonly wyModalError = signal('');
+
+  // Usage modal state
   protected readonly selectedFarmerForUsage = signal('');
   protected readonly selectedFarmerUsageRemaining = computed(() => {
     const id = this.selectedFarmerForUsage();
@@ -94,20 +106,17 @@ export class RepresentativeHomeComponent implements OnInit {
     });
   });
 
-  // Add Water Year form state
-  protected readonly showAddWaterYearModal = signal(false);
+  // Add Water Year modal state
   protected readonly wyDesc = signal('');
   protected readonly wyHoursPerShare = signal('');
-  protected readonly wyStartDate = signal('1404/07/01');
-  protected readonly wyEndDate = signal('1405/06/31');
-  protected readonly wyStartIso = signal('2025-09-23');
-  protected readonly wyEndIso = signal('2026-09-22');
-  protected readonly submittingWY = signal(false);
-  protected readonly wyModalError = signal('');
+  protected readonly wyStartDate = signal('');
+  protected readonly wyEndDate = signal('');
+  protected readonly wyStartIso = signal('');
+  protected readonly wyEndIso = signal('');
 
-  protected readonly repName = computed(
-    () => this.auth.currentProfile()?.full_name || 'نماینده محترم',
-  );
+  protected get repName(): () => string {
+    return () => this.auth.currentProfile()?.full_name || 'نماینده محترم';
+  }
 
   protected readonly filteredFarmers = computed<RepresentativeFarmerItem[]>(() => {
     const list = this.dashboard()?.farmers || [];
@@ -161,41 +170,34 @@ export class RepresentativeHomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    void this.loadData();
+    this.loadData();
   }
 
-  protected async loadData(): Promise<void> {
+  protected loadData(): void {
     this.loading.set(true);
     this.error.set('');
 
-    try {
-      const profile = this.auth.currentProfile();
-      if (!profile?.id) {
-        await this.auth.initializeSession();
-      }
-
-      const currentId = this.auth.currentProfile()?.id;
-      if (!currentId) {
-        throw new Error('اطلاعات کاربری نماینده یافت نشد. لطفاً مجدداً وارد شوید.');
-      }
-
-      const data = await this.portalData.getRepresentativeDashboard(currentId);
-      this.dashboard.set(data);
-      if (data?.well?.id) {
-        try {
-          const wyList = await this.portalData.getWaterYearsForWell(data.well.id);
-          this.waterYears.set(wyList);
-        } catch {
-          // Keep existing or fallback to dashboard waterYear
+    this.auth.ensureProfile$().pipe(
+      switchMap((profile) => this.portalData.getRepresentativeDashboard$(profile.id)),
+      switchMap((data) => {
+        this.dashboard.set(data);
+        if (data?.well?.id) {
+          return this.portalData.getWaterYearsForWell$(data.well.id).pipe(
+            catchError(() => of([])),
+            tap((wyList) => this.waterYears.set(wyList)),
+          );
         }
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'خطا در دریافت اطلاعات چاه';
-      this.error.set(msg);
-      toast.error(msg);
-    } finally {
-      this.loading.set(false);
-    }
+        return of([]);
+      }),
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.loading.set(false)),
+    ).subscribe({
+      error: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'خطا در دریافت اطلاعات چاه';
+        this.error.set(msg);
+        toast.error(msg);
+      },
+    });
   }
 
   // --- Usage Modal Logic ---
@@ -226,7 +228,7 @@ export class RepresentativeHomeComponent implements OnInit {
     this.modalError.set('');
   }
 
-  protected async submitUsage(): Promise<void> {
+  protected submitUsage(): void {
     const farmerId = this.selectedFarmerForUsage();
     const hours = parseHoursNumber(this.usageHours());
 
@@ -244,7 +246,13 @@ export class RepresentativeHomeComponent implements OnInit {
     }
 
     const farmer = this.dashboard()?.farmers.find((f) => f.id === farmerId);
-    if (!farmer?.allocationId) {
+    if (!farmer) {
+      const msg = 'کشاورز مورد نظر یافت نشد.';
+      this.modalError.set(msg);
+      toast.error(msg);
+      return;
+    }
+    if (!farmer.allocationId) {
       const msg = 'برای این کشاورز هنوز سهمیه‌ای ثبت نشده است. ابتدا سهمیه او را ثبت کنید.';
       this.modalError.set(msg);
       toast.error(msg);
@@ -267,50 +275,55 @@ export class RepresentativeHomeComponent implements OnInit {
     const newRemaining = Number((farmer.remainingHours - hours).toFixed(2));
     const usedAtIso = this.usageDateIso() ? `${this.usageDateIso()}T12:00:00Z` : undefined;
 
-    try {
-      const result = await this.portalData.recordWaterUsage({
-        allocationId: farmer.allocationId,
-        consumedHours: hours,
-        description: this.usageDesc(),
-        usedAt: usedAtIso,
-        createdBy: repId,
-        farmerPhone: farmer.phone,
-        farmerName: farmer.name,
-        remainingHours: newRemaining,
-        wellId: this.dashboard()?.well?.id,
-      });
-
-      this.closeUsageModal();
-      if (result.smsSent) {
-        toast.success(
-          `مصرف ${faNumber(hours)} ساعت برای «${farmer.name}» ثبت شد و پیامک ارسال گردید.`,
-        );
-      } else {
-        toast.success(
-          `مصرف ${faNumber(hours)} ساعت برای «${farmer.name}» ثبت شد (مانده: ${faNumber(newRemaining)} ساعت).`,
-        );
-        if (result.message) {
-          toast.warning(`وضعیت پیامک: ${result.message}`);
-        }
-      }
-      await this.loadData();
-    } catch (err: unknown) {
-      const rawMsg = err instanceof Error ? err.message : 'خطا در ثبت مصرف آب';
-      const isForbidden =
-        rawMsg.includes('policy') ||
-        rawMsg.includes('permission') ||
-        rawMsg.includes('42501') ||
-        rawMsg.includes('security');
-      const msg = isForbidden ? 'دسترسی شما به این چاه توسط مدیر لغو گردیده است.' : rawMsg;
-      this.modalError.set(msg);
-      toast.error(msg);
-      if (isForbidden) {
+    this.portalData.recordWaterUsage$({
+      allocationId: farmer.allocationId,
+      consumedHours: hours,
+      description: this.usageDesc(),
+      usedAt: usedAtIso,
+      createdBy: repId,
+      farmerPhone: farmer.phone,
+      farmerName: farmer.name,
+      remainingHours: newRemaining,
+      wellId: this.dashboard()?.well?.id,
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      switchMap((result) => {
         this.closeUsageModal();
-        await this.loadData();
-      }
-    } finally {
-      this.submitting.set(false);
-    }
+        if (result.smsSent) {
+          toast.success(
+            `مصرف ${faNumber(hours)} ساعت برای «${farmer.name}» ثبت شد و پیامک ارسال گردید.`,
+          );
+        } else {
+          toast.success(
+            `مصرف ${faNumber(hours)} ساعت برای «${farmer.name}» ثبت شد (مانده: ${faNumber(newRemaining)} ساعت).`,
+          );
+          if (result.message) {
+            toast.warning(`وضعیت پیامک: ${result.message}`);
+          }
+        }
+        return this.portalData.getRepresentativeDashboard$(repId);
+      }),
+      finalize(() => this.submitting.set(false)),
+    ).subscribe({
+      next: (data) => {
+        this.dashboard.set(data);
+      },
+      error: (err: unknown) => {
+        const rawMsg = err instanceof Error ? err.message : 'خطا در ثبت مصرف آب';
+        const isForbidden =
+          rawMsg.includes('policy') ||
+          rawMsg.includes('permission') ||
+          rawMsg.includes('42501') ||
+          rawMsg.includes('security');
+        const msg = isForbidden ? 'دسترسی شما به این چاه توسط مدیر لغو گردیده است.' : rawMsg;
+        this.modalError.set(msg);
+        toast.error(msg);
+        if (isForbidden) {
+          this.closeUsageModal();
+          this.loadData();
+        }
+      },
+    });
   }
 
   // --- Add Farmer Modal Logic ---
@@ -335,78 +348,87 @@ export class RepresentativeHomeComponent implements OnInit {
   }
 
   protected submitAddFarmer(): void {
-    void submit(this.addFarmerForm, async () => {
-      const wellId = this.dashboard()?.well?.id;
-      const waterYearId = this.dashboard()?.waterYear?.id;
-      const formValue = this.addFarmerModel();
-      const quota = formValue.quota.trim()
-        ? (parseHoursNumber(formValue.quota) ?? undefined)
-        : undefined;
+    if (!this.addFarmerForm().valid()) {
+      return;
+    }
 
-      if (!wellId) {
-        const message = 'اطلاعات چاه یافت نشد.';
-        this.modalError.set(message);
-        toast.error(message);
-        return;
-      }
+    const wellId = this.dashboard()?.well?.id;
+    const waterYearId = this.dashboard()?.waterYear?.id;
+    const formValue = this.addFarmerModel();
+    const quota = formValue.quota.trim()
+      ? (parseHoursNumber(formValue.quota) ?? undefined)
+      : undefined;
 
-      this.submitting.set(true);
-      this.modalError.set('');
+    if (!wellId) {
+      const message = 'اطلاعات چاه یافت نشد.';
+      this.modalError.set(message);
+      toast.error(message);
+      return;
+    }
 
-      try {
-        const result = await this.portalData.addFarmerToWell({
-          wellId,
-          displayName: formValue.displayName,
-          phone: formValue.phone,
-          allocatedHours: waterYearId ? quota : undefined,
-          waterYearId,
-        });
+    const repId = this.auth.currentProfile()?.id;
+    if (!repId) return;
 
-        this.closeAddFarmerModal();
-        toast.success('کشاورز با موفقیت به چاه افزوده شد.');
+    this.submitting.set(true);
+    this.modalError.set('');
 
-        if (quota !== undefined && quota > 0 && waterYearId) {
-          const activeWaterYear = this.dashboard()?.waterYear;
-          const smsResult = await this.portalData.notifyFarmerQuotaAssigned({
-            wellId,
-            wellName: this.dashboard()?.well?.name,
-            waterYearId,
-            farmerId: result.farmerId,
-            farmerPhone: result.phone,
-            farmerName: result.displayName,
-            allocatedHours: quota,
-            hoursPerShare: activeWaterYear?.hoursPerShare,
-            includeHoursPerShare: formValue.includeHoursPerShare,
-          });
-          if (smsResult.success) {
-            toast.success('پیامک سهمیه سال آبی برای کشاورز ارسال شد.');
-          } else if (smsResult.message) {
-            toast.warning(`کشاورز ثبت شد؛ وضعیت پیامک: ${smsResult.message}`);
-          }
-        }
-
-        await this.loadData();
-      } catch (err: unknown) {
-        const rawMessage = err instanceof Error ? err.message : 'خطا در افزودن کشاورز';
-        const isForbidden =
-          rawMessage.includes('اجازه') ||
-          rawMessage.includes('نماینده این چاه') ||
-          rawMessage.includes('نشست کاربری');
-        const message = isForbidden
-          ? 'دسترسی شما به این چاه معتبر نیست؛ لطفاً دوباره وارد شوید.'
-          : rawMessage;
-        this.modalError.set(message);
-        toast.error(message);
-        if (isForbidden) {
+    this.portalData
+      .addFarmerToWell$({
+        wellId,
+        displayName: formValue.displayName,
+        phone: formValue.phone,
+        allocatedHours: waterYearId ? quota : undefined,
+        waterYearId,
+      })
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        switchMap((result) => {
           this.closeAddFarmerModal();
-          await this.loadData();
-        }
-      } finally {
-        this.submitting.set(false);
-      }
-    });
+          toast.success('کشاورز با موفقیت به چاه افزوده شد.');
+
+          if (quota !== undefined && quota > 0 && waterYearId) {
+            const activeWaterYear = this.dashboard()?.waterYear;
+            return this.portalData
+              .notifyFarmerQuotaAssigned$({
+                wellId,
+                wellName: this.dashboard()?.well?.name,
+                waterYearId,
+                farmerId: result.farmerId,
+                farmerPhone: result.phone,
+                farmerName: result.displayName,
+                allocatedHours: quota,
+                hoursPerShare: activeWaterYear?.hoursPerShare,
+                includeHoursPerShare: formValue.includeHoursPerShare,
+              })
+              .pipe(
+                tap((smsResult) => {
+                  if (smsResult.success) {
+                    toast.success('پیامک سهمیه سال آبی برای کشاورز ارسال شد.');
+                  } else if (smsResult.message) {
+                    toast.warning(`کشاورز ثبت شد؛ وضعیت پیامک: ${smsResult.message}`);
+                  }
+                }),
+                catchError(() => of(null)),
+                switchMap(() => this.portalData.getRepresentativeDashboard$(repId)),
+              );
+          }
+          return this.portalData.getRepresentativeDashboard$(repId);
+        }),
+        finalize(() => this.submitting.set(false)),
+      )
+      .subscribe({
+        next: (data) => {
+          this.dashboard.set(data);
+        },
+        error: (err: unknown) => {
+          const msg = err instanceof Error ? err.message : 'خطا در افزودن کشاورز';
+          this.modalError.set(msg);
+          toast.error(msg);
+        },
+      });
   }
 
+  // --- Add Water Year Modal Logic ---
   protected openAddWaterYearModal(): void {
     this.wyDesc.set('');
     this.wyHoursPerShare.set('');
@@ -423,7 +445,7 @@ export class RepresentativeHomeComponent implements OnInit {
     this.wyModalError.set('');
   }
 
-  protected async submitAddWaterYear(): Promise<void> {
+  protected submitAddWaterYear(): void {
     const wellId = this.dashboard()?.well?.id;
     const desc = this.wyDesc().trim();
     const startIso = this.wyStartIso().trim();
@@ -446,29 +468,84 @@ export class RepresentativeHomeComponent implements OnInit {
     this.submittingWY.set(true);
     this.wyModalError.set('');
 
-    try {
-      await this.portalData.createWaterYear({
-        wellId,
-        description: desc,
-        startDate: startIso,
-        endDate: endIso,
-        hoursPerShare,
-      });
-
-      this.closeAddWaterYearModal();
-      toast.success(`دوره جدید سال آبی «${desc}» با موفقیت ثبت شد.`);
-      await this.loadData();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'خطا در ثبت سال آبی';
-      this.wyModalError.set(msg);
-      toast.error(msg);
-    } finally {
-      this.submittingWY.set(false);
-    }
+    this.portalData.createWaterYear$({
+      wellId,
+      description: desc,
+      startDate: startIso,
+      endDate: endIso,
+      hoursPerShare,
+    }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.submittingWY.set(false)),
+    ).subscribe({
+      next: () => {
+        this.closeAddWaterYearModal();
+        toast.success(`دوره جدید سال آبی «${desc}» با موفقیت ثبت شد.`);
+        this.loadData();
+      },
+      error: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'خطا در ثبت سال آبی';
+        this.wyModalError.set(msg);
+        toast.error(msg);
+      },
+    });
   }
 
-  protected async logout(): Promise<void> {
+  protected logout(): void {
     toast.info('در حال خروج از حساب...');
-    await this.auth.logout();
+    this.auth.logout$().pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe();
+  }
+
+  // --- Edit Well Modal Logic ---
+  protected openEditWellModal(): void {
+    const currentName = this.dashboard()?.well?.name || '';
+    this.editWellName.set(currentName);
+    this.editWellError.set('');
+    this.showEditWellModal.set(true);
+  }
+
+  protected closeEditWellModal(): void {
+    this.showEditWellModal.set(false);
+    this.editWellError.set('');
+  }
+
+  protected submitEditWell(): void {
+    const wellId = this.dashboard()?.well?.id;
+    const name = this.editWellName().trim();
+    if (!wellId) return;
+
+    if (!name) {
+      const msg = 'نام چاه نمی‌تواند خالی باشد.';
+      this.editWellError.set(msg);
+      toast.error(msg);
+      return;
+    }
+
+    this.submittingWell.set(true);
+    this.editWellError.set('');
+
+    this.portalData.updateWellName$(wellId, name).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.submittingWell.set(false)),
+    ).subscribe({
+      next: () => {
+        this.closeEditWellModal();
+        toast.success('نام چاه با موفقیت ویرایش شد.');
+        const currentDash = this.dashboard();
+        if (currentDash?.well) {
+          this.dashboard.set({
+            ...currentDash,
+            well: { ...currentDash.well, name },
+          });
+        }
+      },
+      error: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'خطا در ویرایش نام چاه';
+        this.editWellError.set(msg);
+        toast.error(msg);
+      },
+    });
   }
 }

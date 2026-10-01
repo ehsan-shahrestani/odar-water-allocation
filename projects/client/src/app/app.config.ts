@@ -12,6 +12,6 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideAppInitializer(() => inject(AuthService).initializeSession()),
+    provideAppInitializer(() => inject(AuthService).initializeSession$()),
   ],
 };

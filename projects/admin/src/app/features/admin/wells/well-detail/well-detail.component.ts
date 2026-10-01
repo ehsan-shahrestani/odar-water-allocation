@@ -423,7 +423,7 @@ import { parseHoursNumber } from '@core/mock-data';
                           <button
                             type="button"
                             class="text-xs text-rose-600 hover:text-rose-800 font-semibold cursor-pointer border-0 bg-transparent px-2.5 py-1.5"
-                            (click)="removeFarmer(wf.id, curWell.id)"
+                            (click)="removeFarmer(wf.id)"
                           >
                             حذف از چاه
                           </button>
@@ -1169,7 +1169,7 @@ export class WellDetailComponent implements OnInit {
           if (quota !== undefined && quota > 0 && activeWyId) {
             const activeWy = this.curWaterYears().find((wy) => wy.id === activeWyId);
             this.dataService
-              .notifyFarmerQuotaAssigned({
+              .notifyFarmerQuotaAssigned$({
                 wellId,
                 wellName: this.well()?.name,
                 waterYearId: activeWyId,
@@ -1180,7 +1180,8 @@ export class WellDetailComponent implements OnInit {
                 hoursPerShare: activeWy?.hours_per_share,
                 includeHoursPerShare: this.addFarmerIncludeHoursPerShare(),
               })
-              .then((smsRes) => {
+              .pipe(takeUntilDestroyed(this.destroyRef))
+              .subscribe((smsRes) => {
                 if (smsRes.success) {
                   toast.success('پیامک سهمیه سال آبی برای کشاورز ارسال شد.');
                   this.refreshExpenses(wellId);
@@ -1194,7 +1195,7 @@ export class WellDetailComponent implements OnInit {
       });
   }
 
-  protected removeFarmer(wellFarmerId: string, wellId: string): void {
+  protected removeFarmer(wellFarmerId: string): void {
     if (!confirm('آیا از حذف این کشاورز از این چاه اطمینان دارید؟')) return;
 
     this.dataService
@@ -1266,7 +1267,7 @@ export class WellDetailComponent implements OnInit {
           const curW = this.well();
           if (curW) {
             this.dataService
-              .notifyFarmerQuotaAssigned({
+              .notifyFarmerQuotaAssigned$({
                 wellId: curW.id,
                 wellName: curW.name,
                 waterYearId: activeWy.id,
@@ -1277,7 +1278,8 @@ export class WellDetailComponent implements OnInit {
                 hoursPerShare: activeWy.hours_per_share,
                 includeHoursPerShare: this.quotaModalIncludeHoursPerShare(),
               })
-              .then((smsRes) => {
+              .pipe(takeUntilDestroyed(this.destroyRef))
+              .subscribe((smsRes) => {
                 if (smsRes.success) {
                   toast.success('پیامک سهمیه سال آبی برای کشاورز ارسال شد.');
                   this.refreshExpenses(curW.id);
@@ -1347,15 +1349,16 @@ export class WellDetailComponent implements OnInit {
 
           // If a new representative is assigned, send SMS notification
           if (repId && repId !== prevRepId) {
-            void this.dataService
-              .notifyRepresentativeAssigned({
+            this.dataService
+              .notifyRepresentativeAssigned$({
                 wellId: cur.id,
                 wellName: name,
                 representativeId: repId,
                 phone: repObj?.phone,
                 fullName: repObj?.full_name,
               })
-              .then((smsRes) => {
+              .pipe(takeUntilDestroyed(this.destroyRef))
+              .subscribe((smsRes) => {
                 if (smsRes.success) {
                   toast.info(
                     `پیامک ایجاد پنل برای نماینده «${repObj?.full_name || 'نماینده'}» ارسال شد.`
@@ -1415,15 +1418,16 @@ export class WellDetailComponent implements OnInit {
             );
 
             // Send assignment SMS to new representative
-            void this.dataService
-              .notifyRepresentativeAssigned({
+            this.dataService
+              .notifyRepresentativeAssigned$({
                 wellId: cur.id,
                 wellName: cur.name,
                 representativeId: newRepId,
                 phone: repObj?.phone,
                 fullName: repObj?.full_name,
               })
-              .then((smsRes) => {
+              .pipe(takeUntilDestroyed(this.destroyRef))
+              .subscribe((smsRes) => {
                 if (smsRes.success) {
                   toast.info(
                     `پیامک ایجاد پنل برای نماینده «${repObj?.full_name || 'نماینده'}» ارسال شد.`

@@ -3,19 +3,15 @@ import { CanActivateFn, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthService } from './auth.service';
 
-export const roleGuard: CanActivateFn = (route) => {
+/** Redirects `/` to the user's dashboard or to `/login`. */
+export const redirectGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
   return auth.initializeSession$().pipe(
     map(() => {
-      const currentRole = auth.userRole();
-      const expectedRole = route.data['role'];
-
-      if (currentRole === expectedRole) {
-        return true;
-      }
-      return router.parseUrl(currentRole ? '/' + currentRole : '/login');
+      const role = auth.userRole();
+      return router.parseUrl(role ? '/' + role : '/login');
     }),
   );
 };

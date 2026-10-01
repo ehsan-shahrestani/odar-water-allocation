@@ -1,4 +1,5 @@
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../../core/auth.service';
 
@@ -10,8 +11,9 @@ import { AuthService } from '../../../core/auth.service';
 })
 export class RepresentativeLayoutComponent {
   protected readonly auth = inject(AuthService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected logout(): void {
-    void this.auth.logout();
+    this.auth.logout$().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
   }
 }
