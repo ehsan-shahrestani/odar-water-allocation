@@ -84,7 +84,7 @@
         <div class="form-title-group">
           <h2 class="form-heading">تایید شماره موبایل</h2>
           <p class="form-subheading">
-            کد تایید ۴ رقمی به شماره
+            کد تایید به شماره
             <strong dir="ltr" class="phone-highlight">{{ phone() }}</strong>
             پیامک شد.
           </p>
@@ -98,10 +98,10 @@
             type="text"
             inputmode="numeric"
             pattern="[0-9]*"
-            maxlength="4"
+            maxlength="6"
             dir="ltr"
             autocomplete="one-time-code"
-            placeholder="— — — —"
+            placeholder="— — — — — —"
             [value]="otpCode()"
             (input)="onOtpInput($event)"
             (paste)="onOtpPaste($event)"

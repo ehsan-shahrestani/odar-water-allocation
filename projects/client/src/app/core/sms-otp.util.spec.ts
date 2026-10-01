@@ -7,9 +7,9 @@ describe('extractOtpFromSms', () => {
     expect(extractOtpFromSms(sms, 4)).toBe('2587');
   });
 
-  it('extracts a 6-digit OTP from standard Odar SMS format when requested', () => {
+  it('extracts a 6-digit OTP from standard Odar SMS format with default settings', () => {
     const sms = `تایید ورود به اودار\n\nرمز : 025877\n\n@odar.ir #025877`;
-    expect(extractOtpFromSms(sms, 6)).toBe('025877');
+    expect(extractOtpFromSms(sms)).toBe('025877');
   });
 
   it('extracts 4-digit OTP when SMS contains Persian numerals', () => {

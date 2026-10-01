@@ -106,15 +106,15 @@ export class LoginComponent {
     const input = event.target as HTMLInputElement;
     const raw = input.value;
     const extracted =
-      extractOtpFromSms(raw, 4) || normalizeDigits(raw).replace(/\D/g, '');
-    const clean = extracted.slice(0, 4);
+      extractOtpFromSms(raw) || normalizeDigits(raw).replace(/\D/g, '');
+    const clean = extracted.slice(0, 6);
 
     this.otpCode.set(clean);
     if (input.value !== clean) {
       input.value = clean;
     }
 
-    if (clean.length === 4) {
+    if (clean.length === 6) {
       this.verifyOtp();
     }
   }
@@ -122,7 +122,7 @@ export class LoginComponent {
   protected onOtpPaste(event: ClipboardEvent): void {
     const pasted = event.clipboardData?.getData('text');
     if (pasted) {
-      const extracted = extractOtpFromSms(pasted, 4);
+      const extracted = extractOtpFromSms(pasted);
       if (extracted) {
         event.preventDefault();
         this.otpCode.set(extracted);
@@ -140,8 +140,8 @@ export class LoginComponent {
 
     const rawCode = this.otpCode().trim();
     const code = normalizeDigits(rawCode);
-    if (!code || code.length !== 4) {
-      const msg = 'کد تایید ۴ رقمی را وارد کنید.';
+    if (!code || code.length < 4 || code.length > 6) {
+      const msg = 'کد تایید را وارد کنید.';
       this.error.set(msg);
       toast.error(msg);
       this.otpInput()?.nativeElement.focus();
@@ -242,10 +242,10 @@ export class LoginComponent {
         if (!raw) return;
 
         const code =
-          extractOtpFromSms(raw, 4) ||
-          normalizeDigits(raw).replace(/\D/g, '').slice(0, 4);
+          extractOtpFromSms(raw) ||
+          normalizeDigits(raw).replace(/\D/g, '').slice(0, 6);
 
-        if (code && code.length === 4) {
+        if (code && (code.length === 4 || code.length === 6)) {
           this.otpCode.set(code);
           const input = this.otpInput()?.nativeElement;
           if (input) input.value = code;
