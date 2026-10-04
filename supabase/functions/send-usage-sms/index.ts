@@ -1,6 +1,14 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
+import {
+  authorizeCaller,
+  authorizeWell,
+  requestBody,
+  RequestError,
+  requireId,
+} from '../_shared/authorization.ts';
+
 const JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
   'Access-Control-Allow-Origin': '*',
@@ -81,121 +89,60 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-  if (!apiKey) {
+  if (!apiKey || !supabaseUrl || !serviceRoleKey) {
     console.error('KAVENEGAR_API_KEY is not configured');
     return jsonResponse({ error: 'کلید وب‌سرویس پیامک کاوه‌نگار تنظیم نشده است.' }, 500);
   }
 
   try {
-    const body = await req.json();
+    const admin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    await authorizeCaller(req, admin, false);
+    const body = requestBody(await req.json());
 
-    // Diagnostics: Check message status
-    if (body.checkMessageId) {
-      const statusRes = await fetch(
-        `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/sms/status.json?messageid=${encodeURIComponent(body.checkMessageId)}`,
-      );
-      const statusJson = await statusRes.json();
-      return jsonResponse({ statusCheck: statusJson });
+    if (body.getOutbox || body.getAccountInfo || body.checkMessageId) {
+      throw new RequestError(403, 'این عملیات در دسترس نیست.');
     }
-
-    // Diagnostics: Check account config
-    if (body.getAccountInfo) {
-      const infoRes = await fetch(
-        `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/account/config.json`,
-      );
-      const infoJson = await infoRes.json();
-      return jsonResponse({ accountConfig: infoJson });
+    const allocationId = requireId(body.allocationId);
+    const { data: alloc, error: allocError } = await admin
+      .from('water_allocations')
+      .select(
+        'id, allocated_hours, water_years(well_id), well_farmers(well_id, display_name, profiles(phone, full_name, is_active)), water_usages(consumed_hours)',
+      )
+      .eq('id', allocationId)
+      .maybeSingle();
+    if (allocError || !alloc) throw new RequestError(404, 'سهمیه یافت نشد.');
+    const record = alloc as unknown as {
+      allocated_hours: number;
+      water_years: { well_id: string };
+      well_farmers: {
+        well_id: string;
+        display_name: string;
+        profiles: { phone: string; full_name: string; is_active: boolean };
+      };
+      water_usages: { consumed_hours: number }[];
+    };
+    const wellId = record.water_years.well_id;
+    await authorizeWell(req, admin, wellId);
+    if (record.well_farmers.well_id !== wellId || !record.well_farmers.profiles?.is_active) {
+      throw new RequestError(400, 'اطلاعات کشاورز معتبر نیست.');
     }
-
-    // Diagnostics: Check outbox
-    if (body.getOutbox) {
-      const outboxRes = await fetch(
-        `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/sms/latestoutbox.json?pagesize=10`,
-      );
-      const outboxJson = await outboxRes.json();
-      return jsonResponse({ outbox: outboxJson });
+    const receptor = normalizeIranianMobile(record.well_farmers.profiles.phone);
+    const farmerName = record.well_farmers.display_name || record.well_farmers.profiles.full_name;
+    const consumedHours = Number(body.consumedHours);
+    if (!receptor || !Number.isFinite(consumedHours) || consumedHours <= 0) {
+      throw new RequestError(400, 'اطلاعات مصرف یا شماره موبایل معتبر نیست.');
     }
-
-    let receptor = body.phone ? normalizeIranianMobile(String(body.phone)) : null;
-    let wellId = body.wellId ? String(body.wellId).trim() : null;
-    let farmerName: string | null = body.farmerName ? String(body.farmerName).trim() : null;
-    const consumedHours =
-      typeof body.consumedHours === 'number'
-        ? body.consumedHours
-        : parseFloat(body.consumedHours || '0');
-    let remainingHours =
-      typeof body.remainingHours === 'number'
-        ? body.remainingHours
-        : parseFloat(body.remainingHours || '0');
-    const sender = body.sender || configuredSender;
-    const template = body.template || configuredTemplate;
-
-    // Lookup missing wellId, phone, farmerName, or remainingHours from database using allocationId
-    if (
-      (!wellId || !receptor || isNaN(remainingHours) || !farmerName) &&
-      body.allocationId &&
-      supabaseUrl &&
-      serviceRoleKey
-    ) {
-      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-      const { data: alloc, error: allocError } = await supabaseAdmin
-        .from('water_allocations')
-        .select(
-          `
-          id,
-          allocated_hours,
-          water_years(well_id),
-          well_farmers(
-            well_id,
-            display_name,
-            profiles(phone, full_name)
-          ),
-          water_usages(consumed_hours)
-        `,
-        )
-        .eq('id', body.allocationId)
-        .single();
-
-      if (!allocError && alloc) {
-        const rawWf = alloc.well_farmers as unknown as {
-          well_id?: string;
-          display_name?: string | null;
-          profiles?: { phone?: string; full_name?: string };
-        } | null;
-        const rawWy = alloc.water_years as unknown as { well_id?: string } | null;
-
-        if (!wellId) {
-          wellId = rawWy?.well_id || rawWf?.well_id || null;
-        }
-
-        const farmerProfile = rawWf?.profiles;
-        if (!farmerName) {
-          farmerName = rawWf?.display_name?.trim() || farmerProfile?.full_name || null;
-        }
-        if (!receptor && farmerProfile?.phone) {
-          receptor = normalizeIranianMobile(farmerProfile.phone);
-        }
-
-        if (isNaN(remainingHours)) {
-          const totalQuota = alloc.allocated_hours || 0;
-          const usages = (alloc.water_usages as Array<{ consumed_hours: number }>) || [];
-          const totalUsed = usages.reduce((sum, u) => sum + (u.consumed_hours || 0), 0);
-          remainingHours = Math.max(0, totalQuota - totalUsed);
-        }
-      }
+    const totalUsed = record.water_usages.reduce(
+      (sum, usage) => sum + Number(usage.consumed_hours),
+      0,
+    );
+    if (!record.water_usages.some((usage) => Number(usage.consumed_hours) === consumedHours)) {
+      throw new RequestError(400, 'مصرف ثبت‌شده یافت نشد.');
     }
-
-    if (!receptor) {
-      return jsonResponse({ error: 'شماره موبایل گیرنده پیامک نامعتبر یا یافت نشد.' }, 400);
-    }
-
-    if (isNaN(consumedHours) || consumedHours <= 0) {
-      return jsonResponse({ error: 'میزان ساعت مصرف نامعتبر است.' }, 400);
-    }
-
-    if (remainingHours < 0) {
-      return jsonResponse({ error: 'میزان ساعت مصرف نمی‌تواند بیشتر از سهمیه باقیمانده باشد.' }, 400);
-    }
+    const remainingHours = Math.max(0, Number(record.allocated_hours) - totalUsed);
+    const sender = configuredSender;
 
     const shamsiDate = formatShamsiDateTime(new Date());
 
@@ -325,6 +272,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       smsText: message,
     });
   } catch (err: unknown) {
+    if (err instanceof RequestError) return jsonResponse({ error: err.message }, err.status);
     console.error('Error processing send-usage-sms', err);
     return jsonResponse(
       {

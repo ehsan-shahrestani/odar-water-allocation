@@ -5,6 +5,11 @@ on:
     # 01:00 Iran time — 21:30 UTC
     - cron: '30 21 * * *'
   workflow_dispatch:
+    inputs:
+      notify:
+        description: Send backup result SMS
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -31,10 +36,13 @@ jobs:
       S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
 
     steps:
+      - name: Check out backup verification scripts
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
       - name: Install Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1
         with:
-          version: latest
+          version: 2.119.0
 
       - name: Create database backup
         shell: bash
@@ -85,13 +93,18 @@ jobs:
 
           echo "Backup created successfully: $backup_name ($filesize bytes)"
 
-      - name: Upload backup to ParsPack
+      - name: Upload and verify backup in ParsPack
+        id: upload
         shell: bash
         run: |
           set -Eeuo pipefail
 
           endpoint="$S3_ENDPOINT"
-          if [[ "$endpoint" != http://* && "$endpoint" != https://* ]]; then
+          if [[ "$endpoint" != https://* ]]; then
+            if [[ "$endpoint" == http://* ]]; then
+              echo "::error::Backup endpoint must use HTTPS."
+              exit 1
+            fi
             endpoint="https://$endpoint"
           fi
 
@@ -112,36 +125,32 @@ jobs:
             --endpoint-url "$endpoint" \
             > /dev/null
 
-          echo "Backup uploaded and verified: $object_key"
+          downloaded="$BACKUP_DIR/downloaded.tar.gz"
+          aws s3 cp "s3://$S3_BUCKET_NAME/$object_key" "$downloaded" \
+            --endpoint-url "$endpoint" --no-progress
+          cmp "$BACKUP_DIR/$BACKUP_FILE" "$downloaded"
+          python3 scripts/restore_public.py "$downloaded"
+          echo "Backup uploaded, downloaded and verified: $object_key"
 
-      - name: Send success SMS via Kavenegar
-        if: success()
+      - name: Test restore in an isolated local database
+        id: restore
+        run: python3 scripts/verify_backup_restore.py "$BACKUP_DIR/downloaded.tar.gz"
+
+      - name: Send success notification
+        if: success() && (github.event_name == 'schedule' || inputs.notify)
+        continue-on-error: true
         env:
           KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
           ADMIN_PHONE: ${{ secrets.ADMIN_PHONE }}
-        run: |
-          if [ -n "$KAVENEGAR_API_KEY" ] && [ -n "$ADMIN_PHONE" ]; then
-            size_kb=$((FILESIZE / 1024))
-            message="سامانه اُدار: بکاپ دیتابیس با موفقیت انجام شد.%0Aفایل: ${BACKUP_FILE}%0Aحجم: ${size_kb} کیلوبایت"
+        run: python3 scripts/backup_notification.py success
 
-            curl --fail --silent --show-error -X POST \
-              "https://api.kavenegar.com/v1/${KAVENEGAR_API_KEY}/sms/send.json" \
-              -d "receptor=${ADMIN_PHONE}" \
-              -d "message=${message}"
-          fi
-
-      - name: Send failure SMS via Kavenegar
-        if: failure()
+      - name: Send backup or verification failure notification
+        if: failure() && (github.event_name == 'schedule' || inputs.notify)
+        continue-on-error: true
         env:
           KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
           ADMIN_PHONE: ${{ secrets.ADMIN_PHONE }}
-        run: |
-          if [ -n "$KAVENEGAR_API_KEY" ] && [ -n "$ADMIN_PHONE" ]; then
-            curl --silent -X POST \
-              "https://api.kavenegar.com/v1/${KAVENEGAR_API_KEY}/sms/send.json" \
-              -d "receptor=${ADMIN_PHONE}" \
-              -d "message=هشدار سامانه اُدار: بکاپ شبانه دیتابیس ناموفق بود. GitHub Actions را بررسی کنید."
-          fi
+        run: python3 scripts/backup_notification.py failure
 
       - name: Clean temporary files
         if: always()

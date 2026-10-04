@@ -31,7 +31,7 @@ TABLE_ORDER = (
     "water_usages",
     "well_expenses",
 )
-IGNORED_PUBLIC_TABLES = {"admin_otp_codes"}  # One-time codes must not be replayed.
+IGNORED_PUBLIC_TABLES = {"admin_otp_codes", "client_otp_codes", "admin_mfa_sessions"}  # One-time codes must not be replayed.
 MAX_MEMBER_BYTES = 512 * 1024 * 1024
 COPY_HEADER = re.compile(
     r'^COPY "(?P<schema>[a-z_]+)"\."(?P<table>[a-z_]+)" '
@@ -67,7 +67,7 @@ def read_archive(path: Path) -> dict[str, bytes]:
     try:
         with tarfile.open(path, "r:*") as archive:
             members = archive.getmembers()
-            if {item.name for item in members} != required:
+            if len(members) != len(required) or {item.name for item in members} != required:
                 raise RestoreError("Archive entries differ from the expected backup files")
             if any(not item.isfile() or item.size > MAX_MEMBER_BYTES for item in members):
                 raise RestoreError("Archive contains an unsupported or oversized entry")

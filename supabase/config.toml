@@ -264,6 +264,18 @@ template = "کد تایید اُدار: {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
 max_frequency = "5s"
 
+[functions.client-otp]
+verify_jwt = false
+
+[functions.admin-otp]
+verify_jwt = true
+
+[functions.send-sms-kavenegar]
+verify_jwt = false
+
+[functions.send-representative-sms]
+verify_jwt = true
+
 [functions.representative-add-farmer]
 verify_jwt = true
 

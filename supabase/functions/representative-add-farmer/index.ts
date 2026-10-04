@@ -2,6 +2,8 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { maskIranianMobile, normalizeIranianMobile, phoneStorageVariants } from './farmer-input.ts';
 
+import { authorizeWell, RequestError } from '../_shared/authorization.ts';
+
 const JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
   'Access-Control-Allow-Origin': '*',
@@ -133,6 +135,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return jsonResponse({ error: 'نشست کاربری معتبر نیست؛ لطفاً دوباره وارد شوید.' }, 401);
     }
 
+    await authorizeWell(req, admin, wellId);
     const callerId = userResult.user.id;
     const { data: caller, error: callerError } = await admin
       .from('profiles')
@@ -196,9 +199,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     let farmer = matchingProfiles?.[0] as FarmerProfile | undefined;
     if (farmer && !farmer.is_active) {
-      // Reactivate profile if it was inactive
-      await admin.from('profiles').update({ is_active: true }).eq('id', farmer.id);
-      farmer.is_active = true;
+      return jsonResponse(
+        { error: 'حساب کشاورز غیرفعال است؛ فعال‌سازی باید توسط مدیر انجام شود.' },
+        403,
+      );
     }
 
     let farmerId = farmer?.id ?? '';
@@ -247,6 +251,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
           if (existingAuthUser) {
             farmerId = existingAuthUser.id;
+            const { data: storedProfile } = await admin
+              .from('profiles')
+              .select('id, role, is_active')
+              .eq('id', farmerId)
+              .maybeSingle();
+            if (storedProfile && (!storedProfile.is_active || storedProfile.role !== 'farmer')) {
+              return jsonResponse({ error: 'تغییر حساب موجود مجاز نیست.' }, 403);
+            }
             const { data: ensuredProfile } = await admin
               .from('profiles')
               .upsert(
@@ -412,6 +424,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       welcomeSmsSent,
     });
   } catch (error: unknown) {
+    if (error instanceof RequestError) return jsonResponse({ error: error.message }, error.status);
     console.error('representative-add-farmer unexpected failure', {
       message: error instanceof Error ? error.message : 'unknown',
       wellId,

@@ -1,6 +1,14 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
+import {
+  authorizeCaller,
+  authorizeWell,
+  requestBody,
+  RequestError,
+  requireId,
+} from '../_shared/authorization.ts';
+
 const JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
   'Access-Control-Allow-Origin': '*',
@@ -62,94 +70,56 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-  if (!apiKey) {
+  if (!apiKey || !supabaseUrl || !serviceRoleKey) {
     console.error('KAVENEGAR_API_KEY is not configured');
     return jsonResponse({ error: 'کلید وب‌سرویس پیامک کاوه‌نگار تنظیم نشده است.' }, 500);
   }
 
   try {
-    const body = await req.json();
+    const admin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    await authorizeCaller(req, admin, false);
+    const body = requestBody(await req.json());
 
-    const wellId = body.wellId ? String(body.wellId).trim() : null;
-    let wellName = body.wellName ? String(body.wellName).trim() : null;
-    const waterYearId = body.waterYearId ? String(body.waterYearId).trim() : null;
-    const farmerId = body.farmerId ? String(body.farmerId).trim() : null;
-    let receptor =
-      body.farmerPhone || body.phone
-        ? normalizeIranianMobile(String(body.farmerPhone || body.phone))
-        : null;
-    let farmerName =
-      body.farmerName || body.fullName ? String(body.farmerName || body.fullName).trim() : null;
-    const allocatedHours =
-      body.allocatedHours !== undefined && body.allocatedHours !== null
-        ? Number(body.allocatedHours)
-        : null;
-    let hoursPerShare =
-      body.hoursPerShare !== undefined && body.hoursPerShare !== null
-        ? Number(body.hoursPerShare)
-        : null;
-    const sender = body.sender || configuredSender;
-
-    if (!wellId) {
-      return jsonResponse({ error: 'شناسه چاه الزامی است.' }, 400);
-    }
-
-    if (allocatedHours === null || isNaN(allocatedHours)) {
-      return jsonResponse({ error: 'میزان سهمیه ساعت آب الزامی است.' }, 400);
-    }
-
-    // Lookup missing phone, name, wellName, or hoursPerShare from DB if needed
-    if (supabaseUrl && serviceRoleKey) {
-      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-      if ((!receptor || !farmerName) && farmerId) {
-        const { data: membership } = await supabaseAdmin
-          .from('well_farmers')
-          .select('display_name, profiles(phone, full_name)')
-          .eq('well_id', wellId)
-          .eq('farmer_id', farmerId)
-          .maybeSingle();
-
-        const profile = membership?.profiles as unknown as {
-          phone?: string;
-          full_name?: string;
-        } | null;
-        if (membership) {
-          if (!farmerName) {
-            farmerName = membership.display_name?.trim() || profile?.full_name || null;
-          }
-          if (!receptor && profile?.phone) {
-            receptor = normalizeIranianMobile(profile.phone);
-          }
-        }
-      }
-
-      if (!wellName && wellId) {
-        const { data: well } = await supabaseAdmin
-          .from('wells')
-          .select('name')
-          .eq('id', wellId)
-          .maybeSingle();
-
-        if (well?.name) wellName = well.name;
-      }
-
-      if ((hoursPerShare === null || isNaN(hoursPerShare)) && waterYearId) {
-        const { data: wy } = await supabaseAdmin
-          .from('water_years')
-          .select('hours_per_share')
-          .eq('id', waterYearId)
-          .maybeSingle();
-
-        if (wy?.hours_per_share !== undefined && wy?.hours_per_share !== null) {
-          hoursPerShare = Number(wy.hours_per_share);
-        }
-      }
-    }
-
-    if (!receptor) {
-      return jsonResponse({ error: 'شماره همراه کشاورز یافت نشد یا نامعتبر است.' }, 400);
-    }
+    const wellId = requireId(body.wellId);
+    const farmerId = requireId(body.farmerId);
+    const waterYearId = requireId(body.waterYearId);
+    const { well } = await authorizeWell(req, admin, wellId);
+    const { data: membership, error: membershipError } = await admin
+      .from('well_farmers')
+      .select('id, display_name, profiles(phone, full_name, is_active)')
+      .eq('well_id', wellId)
+      .eq('farmer_id', farmerId)
+      .maybeSingle();
+    if (membershipError || !membership) throw new RequestError(404, 'کشاورز این چاه یافت نشد.');
+    const member = membership as unknown as {
+      id: string;
+      display_name: string;
+      profiles: { phone: string; full_name: string; is_active: boolean };
+    };
+    if (!member.profiles?.is_active) throw new RequestError(403, 'حساب کشاورز غیرفعال است.');
+    const { data: year, error: yearError } = await admin
+      .from('water_years')
+      .select('hours_per_share')
+      .eq('id', waterYearId)
+      .eq('well_id', wellId)
+      .maybeSingle();
+    const { data: allocation, error: allocationError } = await admin
+      .from('water_allocations')
+      .select('allocated_hours')
+      .eq('well_farmer_id', member.id)
+      .eq('water_year_id', waterYearId)
+      .maybeSingle();
+    if (yearError || !year || allocationError || !allocation)
+      throw new RequestError(404, 'سهمیه یا سال آبی یافت نشد.');
+    const receptor = normalizeIranianMobile(member.profiles.phone);
+    if (!receptor) throw new RequestError(400, 'شماره موبایل معتبر نیست.');
+    const farmerName = member.display_name || member.profiles.full_name;
+    const wellName = well.name;
+    const allocatedHours = Number(allocation.allocated_hours);
+    const hoursPerShare = year.hours_per_share === null ? null : Number(year.hours_per_share);
+    const sender = configuredSender;
 
     const includeHoursPerShare =
       body.includeHoursPerShare !== false && String(body.includeHoursPerShare) !== 'false';
@@ -287,6 +257,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       smsText: message,
     });
   } catch (err: unknown) {
+    if (err instanceof RequestError) return jsonResponse({ error: err.message }, err.status);
     console.error('Error processing send-quota-sms', err);
     return jsonResponse(
       {
