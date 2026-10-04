@@ -251,30 +251,35 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
           if (existingAuthUser) {
             farmerId = existingAuthUser.id;
-            const { data: storedProfile } = await admin
+            const { data: storedProfile, error: storedProfileError } = await admin
               .from('profiles')
-              .select('id, role, is_active')
+              .select('id, full_name, phone, role, is_active')
               .eq('id', farmerId)
-              .maybeSingle();
+              .maybeSingle<FarmerProfile>();
+            if (storedProfileError) {
+              return jsonResponse({ error: 'بررسی حساب موجود انجام نشد.' }, 500);
+            }
             if (storedProfile && (!storedProfile.is_active || storedProfile.role !== 'farmer')) {
               return jsonResponse({ error: 'تغییر حساب موجود مجاز نیست.' }, 403);
             }
-            const { data: ensuredProfile } = await admin
-              .from('profiles')
-              .upsert(
-                {
+            if (storedProfile) {
+              farmer = storedProfile;
+            } else {
+              const { data: ensuredProfile, error: ensureProfileError } = await admin
+                .from('profiles')
+                .insert({
                   id: farmerId,
                   phone: phone,
                   full_name: displayName,
                   role: 'farmer',
                   is_active: true,
-                },
-                { onConflict: 'id' },
-              )
-              .select('id, full_name, phone, role, is_active')
-              .single();
+                })
+                .select('id, full_name, phone, role, is_active')
+                .single();
 
-            if (ensuredProfile) {
+              if (ensureProfileError || !ensuredProfile) {
+                return jsonResponse({ error: 'ثبت حساب کشاورز انجام نشد.' }, 409);
+              }
               farmer = ensuredProfile;
             }
           } else {
