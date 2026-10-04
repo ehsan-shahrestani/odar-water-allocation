@@ -52,23 +52,30 @@ jobs:
 
           backup_dir="$(mktemp -d)"
           echo "BACKUP_DIR=$backup_dir" >> "$GITHUB_ENV"
+          # Dumping a remote database does not need the app's local Auth hooks.
+          # Keep CLI configuration independent of development-only hook secrets.
+          mkdir "$backup_dir/supabase"
+          printf 'project_id = "odar-backup"\n[db]\nmajor_version = 17\n' > "$backup_dir/supabase/config.toml"
 
           timestamp="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
           backup_name="odar-supabase-${timestamp}-${GITHUB_RUN_ID}.tar.gz"
 
           echo "Dumping roles..."
           supabase db dump \
+            --workdir "$backup_dir" \
             --db-url "$SUPABASE_DB_URL" \
             --role-only \
             -f "$backup_dir/roles.sql"
 
           echo "Dumping schema..."
           supabase db dump \
+            --workdir "$backup_dir" \
             --db-url "$SUPABASE_DB_URL" \
             -f "$backup_dir/schema.sql"
 
           echo "Dumping data..."
           supabase db dump \
+            --workdir "$backup_dir" \
             --db-url "$SUPABASE_DB_URL" \
             --data-only \
             --use-copy \
