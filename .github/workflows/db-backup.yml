@@ -152,7 +152,7 @@ jobs:
         run: python3 scripts/backup_notification.py success
 
       - name: Send backup or verification failure notification
-        if: failure() && (github.event_name == 'schedule' || inputs.notify)
+        if: failure() && steps.restore.conclusion != 'success' && (github.event_name == 'schedule' || inputs.notify)
         continue-on-error: true
         env:
           KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}

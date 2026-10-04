@@ -45,12 +45,12 @@ def verify(archive):
             # custom schema and data onto the matching local platform baseline.
             sql = files['roles.sql'] + b'\n' + files['schema.sql'] + b'\nSET session_replication_role = replica;\n' + files['data.sql'] + b'\nSET session_replication_role = origin;\n'
             print('Restoring archived roles, schema and data...', flush=True)
-            run(['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin', '-X', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=sqlstate', '--single-transaction'], input=sql)
+            run(['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin', '-d', 'postgres', '-X', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=sqlstate', '--single-transaction'], input=sql)
             # Exercise the same public-data recovery transaction used in an incident.
             print('Testing public-data recovery...', flush=True)
-            run(['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin', '-X', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=sqlstate', '--single-transaction'], input=render_sql(snapshot, 'full').encode())
+            run(['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin', '-d', 'postgres', '-X', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=sqlstate', '--single-transaction'], input=render_sql(snapshot, 'full').encode())
             for table in TABLE_ORDER:
-                result = run(['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin', '-At', '-c', f'SELECT count(*) FROM public."{table}";'])
+                result = run(['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin', '-d', 'postgres', '-At', '-c', f'SELECT count(*) FROM public."{table}";'])
                 if int(result.stdout.strip()) != snapshot.blocks[table].count:
                     raise RuntimeError('Restored row count differs: ' + table)
             print('Isolated schema/data restore and public recovery transaction passed.')
