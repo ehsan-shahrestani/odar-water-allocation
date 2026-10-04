@@ -1,45 +1,4 @@
 <div class="role-layout">
-  <!-- Top Bar: Compact, clean & useful (Shown on mobile, desktop handled by sidebar) -->
-  <header class="dashboard-topbar md:hidden">
-    <div class="topbar-user">
-      <div class="user-avatar-badge" aria-hidden="true">
-        <svg
-          class="w-5 h-5 text-emerald-800"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
-          />
-        </svg>
-      </div>
-      <div class="user-meta">
-        <span class="app-brand-label">سامانه تخصیص آب اُدار</span>
-        <h1 class="user-name">{{ repName() }}</h1>
-      </div>
-    </div>
-    <button
-      type="button"
-      class="topbar-logout-btn"
-      (click)="logout()"
-      title="خروج از حساب"
-      aria-label="خروج از حساب"
-    >
-      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
-        />
-      </svg>
-      <span class="hidden md:inline text-xs font-bold text-stone-600">خروج</span>
-    </button>
-  </header>
-
   @if (loading()) {
     <div class="loading-state">
       <div class="spinner" aria-hidden="true"></div>
@@ -79,60 +38,43 @@
         </div>
         <h3>چاهی به حساب شما متصل نیست</h3>
         <p>لطفاً با مدیر سامانه جهت تعیین چاه تحت مدیریت خود تماس بگیرید.</p>
-        <button app-button (click)="logout()" variant="secondary">خروج از حساب</button>
       </div>
     </app-card>
   } @else {
     <!-- Dashboard Section: Clean Header, Stats & Live Insights -->
     <div id="dashboard-section" class="dashboard-section">
-      <!-- 1. Clean Top Header & Quick Actions -->
-      <div class="dashboard-header-bar">
-        <div class="dash-title-wrap">
-          <div class="flex items-center gap-2">
-            <h1 class="dash-main-title">{{ dashboard()?.well?.name }}</h1>
-            <button
-              type="button"
-              class="btn-inline-edit"
-              (click)="openEditWellModal()"
-              title="ویرایش نام چاه"
-              aria-label="ویرایش نام چاه"
-            >
-              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-              </svg>
-            </button>
-            <div class="dash-status-badge">
-              <span class="pulse-dot"></span>
-              <span>سال آبی {{ dashboard()?.waterYear?.name || 'تعریف‌نشده' }}</span>
+      <section class="well-profile-card" aria-label="مشخصات چاه و نماینده">
+        <div class="well-profile-heading">
+          <div class="well-name-group">
+            <span class="well-caption">چاه تحت مدیریت</span>
+            <div class="well-name-row">
+              <h1 tabindex="-1">{{ dashboard()?.well?.name }}</h1>
+              <button
+                type="button"
+                class="btn-inline-edit"
+                (click)="openEditWellModal()"
+                aria-label="ویرایش نام چاه"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path
+                    d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"
+                  />
+                </svg>
+              </button>
             </div>
+            <p class="representative-name">{{ repName() }} <span>· نماینده چاه</span></p>
           </div>
-          <p class="dash-subtitle">
-            نماینده: {{ repName() }}
-            @if (
-              dashboard()?.waterYear?.hoursPerShare !== null &&
-              dashboard()?.waterYear?.hoursPerShare !== undefined
-            ) {
-              • هر ساعت مالکیت = {{ number(dashboard()?.waterYear?.hoursPerShare) }} ساعت
-            }
-          </p>
         </div>
-
-        <div class="dash-actions-group">
-          <button type="button" class="btn-dash-primary" (click)="openRecordUsageModal()">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            <span>ثبت کارکرد جدید</span>
-          </button>
-
-          <button type="button" class="btn-dash-secondary" (click)="openAddFarmerModal()">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.765z" />
-            </svg>
-            <span>افزودن کشاورز</span>
-          </button>
+        <div class="current-water-year">
+          <span>سال آبی {{ dashboard()?.waterYear?.name || 'تعریف‌نشده' }}</span>
+          @if (
+            dashboard()?.waterYear?.hoursPerShare !== null &&
+            dashboard()?.waterYear?.hoursPerShare !== undefined
+          ) {
+            <span>هر ساعت مالکیت = {{ number(dashboard()?.waterYear?.hoursPerShare) }} ساعت</span>
+          }
         </div>
-      </div>
+      </section>
 
       <!-- 3. Key Metrics Grid (4 Clean High-Contrast Cards) -->
       <div class="stats-grid">
@@ -141,7 +83,9 @@
             <span class="stat-label">کشاورزان چاه</span>
             <div class="stat-icon-wrap icon-blue">
               <svg class="w-4.5 h-4.5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                <path
+                  d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"
+                />
               </svg>
             </div>
           </div>
@@ -153,10 +97,14 @@
 
         <div class="stat-card">
           <div class="stat-top">
-            <span class="stat-label">سهمیه مصوب سال آبی</span>
+            <span class="stat-label">سهمیه سال آبی</span>
             <div class="stat-icon-wrap icon-indigo">
               <svg class="w-4.5 h-4.5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                <path
+                  fill-rule="evenodd"
+                  d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                  clip-rule="evenodd"
+                />
               </svg>
             </div>
           </div>
@@ -171,7 +119,11 @@
             <span class="stat-label">کل مصرف‌شده</span>
             <div class="stat-icon-wrap icon-amber">
               <svg class="w-4.5 h-4.5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z" clip-rule="evenodd" />
+                <path
+                  fill-rule="evenodd"
+                  d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z"
+                  clip-rule="evenodd"
+                />
               </svg>
             </div>
           </div>
@@ -186,7 +138,11 @@
             <span class="stat-label">باقی‌مانده کل چاه</span>
             <div class="stat-icon-wrap icon-emerald">
               <svg class="w-4.5 h-4.5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                <path
+                  fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                  clip-rule="evenodd"
+                />
               </svg>
             </div>
           </div>
@@ -197,132 +153,59 @@
         </div>
       </div>
 
-      <!-- 4. Split Intelligence Section: Top Consumers & Quick Actions / Year Card -->
-      <div class="dashboard-split-grid">
-        <!-- Right Column: Top Consumers Summary Card -->
-        <div class="dash-widget-card">
-          <div class="widget-header">
-            <div class="widget-title-group">
-              <div class="widget-icon-box">
-                <svg class="w-5 h-5 text-emerald-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                </svg>
-              </div>
-              <div>
-                <h3 class="widget-title">بیشترین سهم مصرف</h3>
-                <span class="widget-desc">کشاورزان دارای بالاترین درصد استفاده از سهمیه</span>
-              </div>
-            </div>
-
-            <a routerLink="/representative/farmers" class="widget-link-btn">
-              <span>مشاهده همه ({{ number(totalStats().count) }})</span>
-              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-              </svg>
-            </a>
-          </div>
-
-          <div class="top-farmers-list">
-            @for (farmer of topConsumingFarmers(); track farmer.id) {
-              <div class="top-farmer-row">
-                <div class="tf-info">
-                  <span class="tf-name">{{ farmer.name }}</span>
-                  <span class="tf-sub">مانده: <strong>{{ number(farmer.remainingHours) }}</strong> از {{ number(farmer.quotaHours) }} ساعت</span>
-                </div>
-
-                <div class="tf-progress-wrap">
-                  <div class="tf-bar-track">
-                    <div
-                      class="tf-bar-fill"
-                      [class]="'fill-' + usageLevel(farmer)"
-                      [style.width.%]="usagePercent(farmer)"
-                    ></div>
-                  </div>
-                  <span class="tf-pct" [class]="'text-' + usageLevel(farmer)">
-                    {{ number(usagePercent(farmer)) }}٪
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  class="tf-action-btn"
-                  (click)="openRecordUsageForFarmer(farmer.id)"
-                  title="ثبت کارکرد برای {{ farmer.name }}"
-                >
-                  <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                  </svg>
-                  <span>ثبت کارکرد</span>
-                </button>
-              </div>
-            } @empty {
-              <p class="empty-hint">کشاورزی برای این چاه ثبت نشده است.</p>
-            }
-          </div>
+      <section class="quick-actions-section" aria-labelledby="quick-actions-title">
+        <h2 id="quick-actions-title">دسترسی سریع</h2>
+        <div class="quick-actions-grid">
+          <button
+            type="button"
+            class="quick-action quick-action-primary"
+            (click)="openRecordUsageModal()"
+          >
+            <span class="quick-action-icon" aria-hidden="true"
+              ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 3s-7 8-7 12a7 7 0 0 0 14 0c0-4-7-12-7-12Z M12 11v6m-3-3h6"
+                /></svg
+            ></span>
+            <span>ثبت آبیاری جدید</span>
+          </button>
+          <button type="button" class="quick-action" (click)="openAddFarmerModal()">
+            <span class="quick-action-icon" aria-hidden="true"
+              ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M3 21v-2a7 7 0 0 1 14 0v2 M20 8v6m-3-3h6"
+                /></svg
+            ></span>
+            <span>افزودن کشاورز</span>
+          </button>
+          <a class="quick-action" routerLink="/representative/farmers">
+            <span class="quick-action-icon" aria-hidden="true"
+              ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M3 21v-2a7 7 0 0 1 14 0v2 M18 4a4 4 0 0 1 0 8 M21 21v-2a7 7 0 0 0-3-5.74"
+                /></svg
+            ></span>
+            <span>لیست کشاورزان</span>
+          </a>
+          <a class="quick-action" routerLink="/representative/water-years">
+            <span class="quick-action-icon" aria-hidden="true"
+              ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M8 2v4m8-4v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                /></svg
+            ></span>
+            <span>سال‌های آبی</span>
+          </a>
         </div>
-
-        <!-- Left Column: Quick Navigation & Cycle Overview -->
-        <div class="dash-side-widgets">
-          <!-- Card 1: Water Year Highlights -->
-          <div class="dash-quick-nav-card">
-            <div class="qnc-top">
-              <div class="qnc-icon-badge icon-emerald">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                </svg>
-              </div>
-              <div>
-                <h4 class="qnc-title">دوره‌های سال‌های آبی</h4>
-                <span class="qnc-sub">دوره جاری: {{ dashboard()?.waterYear?.name || 'تعریف‌نشده' }}</span>
-              </div>
-            </div>
-
-            <div class="qnc-details">
-              <div class="qnc-detail-row">
-                <span class="qnc-lbl">تاریخ شروع:</span>
-                <span class="qnc-val">{{ dashboard()?.waterYear?.start || '—' }}</span>
-              </div>
-              <div class="qnc-detail-row">
-                <span class="qnc-lbl">تاریخ پایان:</span>
-                <span class="qnc-val">{{ dashboard()?.waterYear?.end || '—' }}</span>
-              </div>
-            </div>
-
-            <a routerLink="/representative/water-years" class="qnc-btn">
-              <span>مدیریت دوره‌های آبی</span>
-              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-              </svg>
-            </a>
-          </div>
-
-          <!-- Card 2: Quick Farmers Access -->
-          <div class="dash-quick-nav-card">
-            <div class="qnc-top">
-              <div class="qnc-icon-badge icon-blue">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-                </svg>
-              </div>
-              <div>
-                <h4 class="qnc-title">جدول پرونده کشاورزان</h4>
-                <span class="qnc-sub">{{ number(totalStats().count) }} کشاورز عضو چاه</span>
-              </div>
-            </div>
-
-            <p class="qnc-note">
-              جستجو و ویرایش سهمیه، ثبت کارکرد و بررسی سوابق مصارف گذشته کشاورزان.
-            </p>
-
-            <a routerLink="/representative/farmers" class="qnc-btn">
-              <span>مشاهده لیست کشاورزان</span>
-              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-              </svg>
-            </a>
-          </div>
-        </div>
-      </div>
+      </section>
     </div>
   }
 
@@ -371,7 +254,10 @@
               <label for="usage-hours-input" class="form-label">مدت مصرف (ساعت) *</label>
               @if (selectedFarmerUsageRemaining() !== null) {
                 <span class="text-xs text-stone-600 font-medium">
-                  حداکثر مجاز: <strong class="text-emerald-800">{{ number(selectedFarmerUsageRemaining()!) }} ساعت</strong>
+                  حداکثر مجاز:
+                  <strong class="text-emerald-800"
+                    >{{ number(selectedFarmerUsageRemaining()!) }} ساعت</strong
+                  >
                 </span>
               }
             </div>
@@ -668,7 +554,12 @@
 
   <!-- ==================== MODAL: EDIT WELL NAME ==================== -->
   @if (showEditWellModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-edit-well-title">
+    <div
+      class="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-edit-well-title"
+    >
       <button
         type="button"
         class="modal-overlay"
@@ -678,7 +569,12 @@
       <div class="modal-dialog">
         <div class="modal-header">
           <h2 id="modal-edit-well-title" class="modal-title">ویرایش نام چاه</h2>
-          <button type="button" class="modal-close" (click)="closeEditWellModal()" aria-label="بستن">
+          <button
+            type="button"
+            class="modal-close"
+            (click)="closeEditWellModal()"
+            aria-label="بستن"
+          >
             ×
           </button>
         </div>
@@ -702,7 +598,11 @@
           </div>
 
           <div class="modal-actions mt-4">
-            <button app-button type="submit" [disabled]="submittingWell() || !editWellName().trim()">
+            <button
+              app-button
+              type="submit"
+              [disabled]="submittingWell() || !editWellName().trim()"
+            >
               {{ submittingWell() ? 'در حال ذخیره...' : 'ذخیره نام چاه' }}
             </button>
             <button
@@ -720,4 +620,3 @@
     </div>
   }
 </div>
-

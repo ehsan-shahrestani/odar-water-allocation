@@ -31,6 +31,7 @@
         routerLink="/representative"
         [routerLinkActiveOptions]="{ exact: true }"
         routerLinkActive="active"
+        ariaCurrentWhenActive="page"
         class="nav-button"
         aria-label="داشبورد"
       >
@@ -56,6 +57,7 @@
       <a
         routerLink="/representative/water-years"
         routerLinkActive="active"
+        ariaCurrentWhenActive="page"
         class="nav-button"
         aria-label="سال های آبی"
       >
@@ -81,6 +83,7 @@
       <a
         routerLink="/representative/farmers"
         routerLinkActive="active"
+        ariaCurrentWhenActive="page"
         class="nav-button"
         aria-label="لیست کشاورزان"
       >
@@ -129,36 +132,29 @@
         </div>
       </div>
 
-      <!-- 4.  خروج -->
-      <button
-        type="button"
-        class="logout-button"
-        (click)="logout()"
-        title="خروج از حساب کاربری"
-        aria-label=" خروج"
-      >
-        <svg
-          class="w-5 h-5 text-rose-600"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
-          />
-        </svg>
-        <span> خروج</span>
-      </button>
+      <app-logout-button />
     </div>
   </aside>
 
   <!-- Main Content Container -->
-  <main class="rep-main-area">
+  <div class="rep-main-area">
+    <header class="mobile-app-header">
+      <div class="mobile-app-brand">
+        <span class="mobile-brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 3s-7 8-7 12a7 7 0 0 0 14 0c0-4-7-12-7-12Z M9 15a3 3 0 0 0 3 3"
+            />
+          </svg>
+        </span>
+        <span class="mobile-brand-name">اُدار <span>مدیریت سهم آب</span></span>
+      </div>
+      <app-logout-button [compact]="true" />
+    </header>
     <router-outlet />
-  </main>
+  </div>
 
   <!-- Mobile Bottom Navigation Bar (Visible only on < 768px) -->
   <nav class="mobile-bottom-nav" aria-label="ناوبری موبایل">
@@ -166,6 +162,7 @@
       routerLink="/representative"
       [routerLinkActiveOptions]="{ exact: true }"
       routerLinkActive="active"
+      ariaCurrentWhenActive="page"
       class="mobile-nav-item"
     >
       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -178,7 +175,12 @@
       <span>داشبورد</span>
     </a>
 
-    <a routerLink="/representative/water-years" routerLinkActive="active" class="mobile-nav-item">
+    <a
+      routerLink="/representative/water-years"
+      routerLinkActive="active"
+      ariaCurrentWhenActive="page"
+      class="mobile-nav-item"
+    >
       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path
           stroke-linecap="round"
@@ -189,7 +191,12 @@
       <span>سال‌های آبی</span>
     </a>
 
-    <a routerLink="/representative/farmers" routerLinkActive="active" class="mobile-nav-item">
+    <a
+      routerLink="/representative/farmers"
+      routerLinkActive="active"
+      ariaCurrentWhenActive="page"
+      class="mobile-nav-item"
+    >
       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path
           stroke-linecap="round"
@@ -199,16 +206,5 @@
       </svg>
       <span>کشاورزان</span>
     </a>
-
-    <button type="button" class="mobile-nav-item text-rose-600" (click)="logout()">
-      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
-        />
-      </svg>
-      <span>خروج</span>
-    </button>
   </nav>
 </div>

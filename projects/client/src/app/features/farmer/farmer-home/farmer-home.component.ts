@@ -7,11 +7,12 @@ import { FarmerDashboardData, PortalDataService } from '../../../core/portal-dat
 import { ButtonComponent } from '../../../shared/button/button.component';
 import { CardComponent } from '../../../shared/card/card.component';
 import { PageHeaderComponent } from '../../../shared/page-header/page-header.component';
+import { LogoutButton } from '../../../shared/logout-button/logout-button';
 import { faNumber } from '../../../core/mock-data';
 
 @Component({
   selector: 'app-farmer-home',
-  imports: [CardComponent, PageHeaderComponent, ButtonComponent],
+  imports: [CardComponent, PageHeaderComponent, ButtonComponent, LogoutButton],
   template: `
     <app-page-header
       eyebrow="اُدار · خانه کشاورز"
@@ -36,13 +37,12 @@ import { faNumber } from '../../../core/mock-data';
             <span class="text-4xl" aria-hidden="true">🌾</span>
             <h2 class="text-lg font-bold text-ink">به سامانه اُدار خوش آمدید</h2>
             <p class="text-sm text-ink-muted max-w-md mx-auto leading-relaxed">
-              حساب شما با موفقیت فعال شده است، اما هنوز به هیچ چاه کشاورزی متصل نشده‌اید.
-              لطفاً با <strong>نماینده چاه</strong> یا <strong>مدیر سامانه</strong> تماس بگیرید تا چاه و سهمیه شما ثبت شود.
+              حساب شما با موفقیت فعال شده است، اما هنوز به هیچ چاه کشاورزی متصل نشده‌اید. لطفاً با
+              <strong>نماینده چاه</strong> یا <strong>مدیر سامانه</strong> تماس بگیرید تا چاه و
+              سهمیه شما ثبت شود.
             </p>
             <div class="pt-2">
-              <button app-button variant="secondary" (click)="loadData()">
-                بررسی مجدد اتصال
-              </button>
+              <button app-button variant="secondary" (click)="loadData()">بررسی مجدد اتصال</button>
             </div>
           </div>
         </app-card>
@@ -73,7 +73,10 @@ import { faNumber } from '../../../core/mock-data';
               <app-card>
                 <div class="flex items-center justify-between pb-2 mb-2 border-b border-forest-100">
                   <h2 class="font-bold text-forest-900">{{ wy.name }}</h2>
-                  <span class="text-xs bg-mint-100 text-primary px-2 py-0.5 rounded-full font-medium">سال آبی جاری</span>
+                  <span
+                    class="text-xs bg-mint-100 text-primary px-2 py-0.5 rounded-full font-medium"
+                    >سال آبی جاری</span
+                  >
                 </div>
                 <dl class="year-dates">
                   <div>
@@ -128,15 +131,7 @@ import { faNumber } from '../../../core/mock-data';
       }
 
       <div class="pt-4 text-center">
-        <button
-          app-button
-          variant="secondary"
-          type="button"
-          (click)="logout()"
-          class="text-xs"
-        >
-          خروج از حساب کاربری
-        </button>
+        <app-logout-button />
       </div>
     </div>
   `,
@@ -163,26 +158,22 @@ export class FarmerHomeComponent implements OnInit {
     this.loading.set(true);
     this.error.set('');
 
-    this.auth.ensureProfile$().pipe(
-      switchMap((profile) => this.portalData.getFarmerDashboard$(profile.id)),
-      takeUntilDestroyed(this.destroyRef),
-      finalize(() => this.loading.set(false)),
-    ).subscribe({
-      next: (data) => {
-        this.dashboard.set(data);
-      },
-      error: (err: unknown) => {
-        const msg = err instanceof Error ? err.message : 'خطا در دریافت اطلاعات سامانه';
-        this.error.set(msg);
-        toast.error(msg);
-      },
-    });
-  }
-
-  protected logout(): void {
-    toast.info('در حال خروج از حساب...');
-    this.auth.logout$().pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe();
+    this.auth
+      .ensureProfile$()
+      .pipe(
+        switchMap((profile) => this.portalData.getFarmerDashboard$(profile.id)),
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.loading.set(false)),
+      )
+      .subscribe({
+        next: (data) => {
+          this.dashboard.set(data);
+        },
+        error: (err: unknown) => {
+          const msg = err instanceof Error ? err.message : 'خطا در دریافت اطلاعات سامانه';
+          this.error.set(msg);
+          toast.error(msg);
+        },
+      });
   }
 }
