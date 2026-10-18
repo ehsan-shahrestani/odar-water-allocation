@@ -568,22 +568,156 @@
   line-height: 1.5;
 }
 
+/* Visibility controls */
+.desktop-table-view {
+  display: block;
+}
+
+.mobile-usages-list {
+  display: none;
+}
+
+/* Transfer Chips for both desktop and mobile */
+.transfer-chips-wrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.transfer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.transfer-chip.pump-on {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-weight: 600;
+}
+
+.transfer-chip.pump-off {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #9f1239;
+  font-weight: 600;
+}
+
+.transfer-chip.from {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.transfer-chip.to {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
+}
+
+.transfer-chip .chip-label {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.transfer-chip strong {
+  font-weight: 700;
+}
+
+.transfer-arrow {
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: bold;
+  user-select: none;
+}
+
 @media (max-width: 640px) {
   .usages-card {
     padding: 16px 14px;
     border-radius: 18px;
   }
-  .usages-table th {
-    padding: 9px 10px;
-    font-size: 11.5px;
+
+  .desktop-table-view {
+    display: none;
   }
-  .usages-table td {
-    padding: 10px 10px;
+
+  .mobile-usages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .mobile-usage-card {
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .mobile-usage-card:hover {
+    border-color: rgba(187, 247, 208, 0.9);
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.05);
+  }
+
+  .mobile-usage-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .mobile-usage-date {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 650;
+    color: #1e293b;
+  }
+
+  .mobile-transfer-box {
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+
+  .mobile-transfer-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .mobile-desc-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
     font-size: 12px;
+    color: #475569;
+    line-height: 1.5;
+    background: #fafaf9;
+    border-radius: 8px;
+    padding: 6px 10px;
+    border: 1px dashed rgba(226, 232, 240, 0.85);
   }
+
   .hours-badge {
-    font-size: 11.5px;
-    padding: 2px 6px;
+    font-size: 12px;
+    padding: 3px 8px;
   }
 }
 

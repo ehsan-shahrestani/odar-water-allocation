@@ -231,7 +231,8 @@
                 <p>در این سال آبی هنوز هیچ مصرفی برای این کشاورز ثبت نشده است.</p>
               </div>
             } @else {
-              <div class="table-container">
+              <!-- Desktop / Tablet Table View -->
+              <div class="table-container desktop-table-view">
                 <table class="usages-table" aria-label="جدول تاریخچه مصرف">
                   <thead>
                     <tr>
@@ -250,22 +251,33 @@
                             <strong>{{ hoursDisplay(usage.hours) }}</strong>
                           </span>
                         </td>
-                        <td class="cell-transfer text-xs text-stone-600">
-                          @if (usage.receivedFromText || usage.deliveredToText) {
-                            <div class="flex flex-col gap-0.5">
-                              @if (usage.receivedFromText) {
-                                <span class="flex items-center gap-1 text-emerald-800">
-                                  <span class="text-stone-400">از:</span> {{ usage.receivedFromText }}
+                        <td class="cell-transfer">
+                          @if (usage.turnedOnPump || usage.receivedFromText || usage.turnedOffPump || usage.deliveredToText) {
+                            <div class="transfer-chips-wrap">
+                              @if (usage.turnedOnPump) {
+                                <span class="transfer-chip pump-on">⚡ روشن کردن چاه</span>
+                              } @else if (usage.receivedFromText) {
+                                <span class="transfer-chip from">
+                                  <span class="chip-label">تحویل از:</span>
+                                  <strong>{{ usage.receivedFromText }}</strong>
                                 </span>
                               }
-                              @if (usage.deliveredToText) {
-                                <span class="flex items-center gap-1 text-sky-800">
-                                  <span class="text-stone-400">به:</span> {{ usage.deliveredToText }}
+
+                              @if ((usage.turnedOnPump || usage.receivedFromText) && (usage.turnedOffPump || usage.deliveredToText)) {
+                                <span class="transfer-arrow" aria-hidden="true">←</span>
+                              }
+
+                              @if (usage.turnedOffPump) {
+                                <span class="transfer-chip pump-off">🛑 خاموش کردن چاه</span>
+                              } @else if (usage.deliveredToText) {
+                                <span class="transfer-chip to">
+                                  <span class="chip-label">تحویل به:</span>
+                                  <strong>{{ usage.deliveredToText }}</strong>
                                 </span>
                               }
                             </div>
                           } @else {
-                            <span class="text-stone-400">—</span>
+                            <span class="text-stone-300">—</span>
                           }
                         </td>
                         <td class="cell-desc">{{ usage.description || '—' }}</td>
@@ -273,6 +285,62 @@
                     }
                   </tbody>
                 </table>
+              </div>
+
+              <!-- Mobile List / Card View -->
+              <div class="mobile-usages-list" role="list" aria-label="فهرست تاریخچه مصرف">
+                @for (usage of detail.usages; track usage.id) {
+                  <div class="mobile-usage-card" role="listitem">
+                    <div class="mobile-usage-top">
+                      <div class="mobile-usage-date">
+                        <svg class="w-4 h-4 text-stone-400 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd" />
+                        </svg>
+                        <span>{{ usage.date }}</span>
+                      </div>
+                      <div class="hours-badge">
+                        <strong>{{ hoursDisplay(usage.hours) }}</strong>
+                      </div>
+                    </div>
+
+                    @if (usage.turnedOnPump || usage.receivedFromText || usage.turnedOffPump || usage.deliveredToText) {
+                      <div class="mobile-transfer-box">
+                        <div class="mobile-transfer-flow">
+                          @if (usage.turnedOnPump) {
+                            <span class="transfer-chip pump-on">⚡ روشن کردن چاه</span>
+                          } @else if (usage.receivedFromText) {
+                            <span class="transfer-chip from">
+                              <span class="chip-label">تحویل از:</span>
+                              <strong>{{ usage.receivedFromText }}</strong>
+                            </span>
+                          }
+
+                          @if ((usage.turnedOnPump || usage.receivedFromText) && (usage.turnedOffPump || usage.deliveredToText)) {
+                            <span class="transfer-arrow" aria-hidden="true">←</span>
+                          }
+
+                          @if (usage.turnedOffPump) {
+                            <span class="transfer-chip pump-off">🛑 خاموش کردن چاه</span>
+                          } @else if (usage.deliveredToText) {
+                            <span class="transfer-chip to">
+                              <span class="chip-label">تحویل به:</span>
+                              <strong>{{ usage.deliveredToText }}</strong>
+                            </span>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    @if (usage.description) {
+                      <div class="mobile-desc-box">
+                        <svg class="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                        <span>{{ usage.description }}</span>
+                      </div>
+                    }
+                  </div>
+                }
               </div>
             }
           </div>

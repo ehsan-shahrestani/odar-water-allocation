@@ -240,7 +240,7 @@ export class PortalDataService {
           receivedFromText = 'روشن کردن چاه';
         } else if (u.received_from_well_farmer_id) {
           const fromName = farmerNameMap.get(u.received_from_well_farmer_id);
-          receivedFromText = fromName ? `تحویل از ${fromName}` : 'تحویل از هم‌چاهی';
+          receivedFromText = fromName || 'هم‌چاهی';
         }
 
         let deliveredToText: string | null = null;
@@ -248,7 +248,7 @@ export class PortalDataService {
           deliveredToText = 'خاموش کردن چاه';
         } else if (u.delivered_to_well_farmer_id) {
           const toName = farmerNameMap.get(u.delivered_to_well_farmer_id);
-          deliveredToText = toName ? `تحویل به ${toName}` : 'تحویل به هم‌چاهی';
+          deliveredToText = toName || 'هم‌چاهی';
         }
 
         return {
@@ -714,7 +714,7 @@ export class PortalDataService {
           receivedFromText = 'روشن کردن چاه';
         } else if (u.received_from_well_farmer_id) {
           const fromName = farmerNameMap.get(u.received_from_well_farmer_id);
-          receivedFromText = fromName ? `تحویل از ${fromName}` : 'تحویل از هم‌چاهی';
+          receivedFromText = fromName || 'هم‌چاهی';
         }
 
         let deliveredToText: string | null = null;
@@ -722,7 +722,7 @@ export class PortalDataService {
           deliveredToText = 'خاموش کردن چاه';
         } else if (u.delivered_to_well_farmer_id) {
           const toName = farmerNameMap.get(u.delivered_to_well_farmer_id);
-          deliveredToText = toName ? `تحویل به ${toName}` : 'تحویل به هم‌چاهی';
+          deliveredToText = toName || 'هم‌چاهی';
         }
 
         return {

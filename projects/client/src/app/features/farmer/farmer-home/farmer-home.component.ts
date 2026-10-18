@@ -115,10 +115,14 @@ import { faNumber, formatHoursDisplay } from '../../../core/mock-data';
                           <span>{{ usage.date }}</span>
                           @if (usage.receivedFromText || usage.deliveredToText) {
                             <div class="text-xs text-ink-muted mt-0.5 flex flex-wrap gap-x-2">
-                              @if (usage.receivedFromText) {
+                              @if (usage.turnedOnPump) {
+                                <span class="text-amber-800">⚡ روشن کردن چاه</span>
+                              } @else if (usage.receivedFromText) {
                                 <span><span class="text-stone-400">تحویل از:</span> {{ usage.receivedFromText }}</span>
                               }
-                              @if (usage.deliveredToText) {
+                              @if (usage.turnedOffPump) {
+                                <span class="text-rose-800">🛑 خاموش کردن چاه</span>
+                              } @else if (usage.deliveredToText) {
                                 <span><span class="text-stone-400">تحویل به:</span> {{ usage.deliveredToText }}</span>
                               }
                             </div>
