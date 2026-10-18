@@ -243,38 +243,70 @@
               <option value="">-- لطفاً کشاورز را انتخاب کنید --</option>
               @for (farmer of dashboard()?.farmers; track farmer.id) {
                 <option [value]="farmer.id">
-                  {{ farmer.name }} (باقی‌مانده: {{ number(farmer.remainingHours) }} ساعت)
+                  {{ farmer.name }} (باقی‌مانده: {{ hoursDisplay(farmer.remainingHours) }})
                 </option>
               }
             </select>
           </div>
 
           <div class="form-group">
-            <div class="flex items-center justify-between">
-              <label for="usage-hours-input" class="form-label">مدت مصرف (ساعت) *</label>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="form-label mb-0">مدت زمان مصرف *</span>
               @if (selectedFarmerUsageRemaining() !== null) {
                 <span class="text-xs text-stone-600 font-medium">
                   حداکثر مجاز:
                   <strong class="text-emerald-800"
-                    >{{ number(selectedFarmerUsageRemaining()!) }} ساعت</strong
+                    >{{ hoursDisplay(selectedFarmerUsageRemaining()!) }}</strong
                   >
                 </span>
               }
             </div>
-            <input
-              id="usage-hours-input"
-              type="text"
-              inputmode="decimal"
-              class="form-input"
-              placeholder="مثال: ۲.۵ یا ۲:۳۰"
-              [value]="usageHours()"
-              (input)="usageHours.set($any($event.target).value)"
-              required
-            />
-            <small class="form-hint"
-              >می‌توانید به صورت اعشاری (۲.۵) یا ساعت:دقیقه (۲:۳۰) وارد کنید.</small
-            >
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="rep-usage-minutes-part" class="sr-only">دقیقه</label>
+                <div class="relative">
+                  <input
+                    id="rep-usage-minutes-part"
+                    type="text"
+                    inputmode="numeric"
+                    class="form-input text-center font-bold pl-12 pr-3"
+                    placeholder="۰"
+                    [value]="usageMinutesPart()"
+                    (input)="usageMinutesPart.set($any($event.target).value)"
+                  />
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium pointer-events-none select-none">دقیقه</span>
+                </div>
+              </div>
+
+              <div>
+                <label for="rep-usage-hours-part" class="sr-only">ساعت</label>
+                <div class="relative">
+                  <input
+                    id="rep-usage-hours-part"
+                    type="text"
+                    inputmode="numeric"
+                    class="form-input text-center font-bold pl-12 pr-3"
+                    placeholder="۰"
+                    [value]="usageHoursPart()"
+                    (input)="usageHoursPart.set($any($event.target).value)"
+                  />
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium pointer-events-none select-none">ساعت</span>
+                </div>
+              </div>
+            </div>
+
+            @if (parsedUsagePreview()) {
+              <div class="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200/80 rounded-lg px-3 py-1.5 mt-2 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-emerald-600 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" />
+                </svg>
+                <span>مجموع کارکرد: <strong>{{ parsedUsagePreview() }}</strong></span>
+              </div>
+            }
           </div>
+
+
 
           <div class="form-group">
             <app-persian-datepicker
@@ -283,6 +315,48 @@
               [(value)]="usageDate"
               [(isoValue)]="usageDateIso"
             />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="form-group">
+              <label for="rep-usage-received-from" class="form-label">تحویل آب از</label>
+              <select
+                id="rep-usage-received-from"
+                class="form-input"
+                [value]="usageReceivedFrom()"
+                (change)="usageReceivedFrom.set($any($event.target).value)"
+              >
+                <option value="">— نامشخص —</option>
+                <option value="pump_on">⚡ روشن کردن چاه</option>
+                @if (availableWellFarmers().length > 0) {
+                  <optgroup label="کشاورزان چاه">
+                    @for (wf of availableWellFarmers(); track wf.wellFarmerId) {
+                      <option [value]="wf.wellFarmerId">{{ wf.name }}</option>
+                    }
+                  </optgroup>
+                }
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="rep-usage-delivered-to" class="form-label">تحویل آب به</label>
+              <select
+                id="rep-usage-delivered-to"
+                class="form-input"
+                [value]="usageDeliveredTo()"
+                (change)="usageDeliveredTo.set($any($event.target).value)"
+              >
+                <option value="">— نامشخص —</option>
+                <option value="pump_off">🛑 خاموش کردن چاه</option>
+                @if (availableWellFarmers().length > 0) {
+                  <optgroup label="کشاورزان چاه">
+                    @for (wf of availableWellFarmers(); track wf.wellFarmerId) {
+                      <option [value]="wf.wellFarmerId">{{ wf.name }}</option>
+                    }
+                  </optgroup>
+                }
+              </select>
+            </div>
           </div>
 
           <div class="form-group">

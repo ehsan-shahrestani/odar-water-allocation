@@ -263,16 +263,12 @@ small {
 .balance-number {
   position: relative;
   z-index: 1;
-  font-size: 51px;
-  font-weight: 820;
-  line-height: 1.75;
-  letter-spacing: -1.5px;
+  font-size: clamp(28px, 6vw, 42px);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.5px;
 }
-.balance-number > span {
-  font-size: 15px;
-  font-weight: 400;
-  letter-spacing: 0;
-}
+
 .quota-summary {
   position: relative;
   z-index: 1;

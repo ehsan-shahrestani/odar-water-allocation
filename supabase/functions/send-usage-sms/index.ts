@@ -74,6 +74,20 @@ function formatShamsiDateTime(date: Date = new Date()): string {
   return formatter.format(date).replace(',', ' -');
 }
 
+function formatHoursForSms(value: number): string {
+  if (value === 0 || isNaN(value)) return `${toPersianDigits(0)} ساعت`;
+  const isNegative = value < 0;
+  const absVal = Math.abs(value);
+  const totalMinutes = Math.round(absVal * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  const prefix = isNegative ? 'منفی ' : '';
+  if (h === 0 && m === 0) return `${toPersianDigits(0)} ساعت`;
+  if (m === 0) return `${prefix}${toPersianDigits(h)} ساعت`;
+  if (h === 0) return `${prefix}${toPersianDigits(m)} دقیقه`;
+  return `${prefix}${toPersianDigits(h)} ساعت و ${toPersianDigits(m)} دقیقه`;
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: JSON_HEADERS });
@@ -138,7 +152,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       (sum, usage) => sum + Number(usage.consumed_hours),
       0,
     );
-    if (!record.water_usages.some((usage) => Number(usage.consumed_hours) === consumedHours)) {
+    if (!record.water_usages.some((usage) => Math.abs(Number(usage.consumed_hours) - consumedHours) < 0.001)) {
       throw new RequestError(400, 'مصرف ثبت‌شده یافت نشد.');
     }
     const remainingHours = Math.max(0, Number(record.allocated_hours) - totalUsed);
@@ -154,8 +168,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // تاریخ و ساعت شمسی
     const message = [
       'سامانه اودار',
-      `-${toPersianDigits(consumedHours)} ساعت`,
-      `مانده  ${toPersianDigits(remainingHours)}`,
+      `-${formatHoursForSms(consumedHours)}`,
+      `مانده  ${formatHoursForSms(remainingHours)}`,
       shamsiDate,
     ].join('\n');
 
@@ -249,7 +263,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           recipient_phone: receptor,
           recipient_name: farmerName,
           message_id: messageId,
-          description: `پیامک کسر ${toPersianDigits(consumedHours)} ساعت مصرف آب (مانده: ${toPersianDigits(remainingHours)} ساعت)`,
+          description: `پیامک کسر ${formatHoursForSms(consumedHours)} مصرف آب (مانده: ${formatHoursForSms(remainingHours)})`,
         });
 
         if (expenseError) {

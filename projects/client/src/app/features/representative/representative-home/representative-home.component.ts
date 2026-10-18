@@ -13,7 +13,13 @@ import {
 } from '../../../core/portal-data.service';
 import { ButtonComponent } from '../../../shared/button/button.component';
 import { CardComponent } from '../../../shared/card/card.component';
-import { faNumber, parseHoursNumber } from '../../../core/mock-data';
+import {
+  calculateTotalHours,
+  faNumber,
+  formatHoursDisplay,
+  normalizeDigits,
+  parseHoursNumber,
+} from '../../../core/mock-data';
 import { PersianDatepickerComponent } from '../../../shared/persian-datepicker/persian-datepicker.component';
 import {
   formatJalali,
@@ -52,6 +58,7 @@ export class RepresentativeHomeComponent implements OnInit {
     return str.replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d, 10)] ?? d);
   }
   protected readonly number = (v: number | string | undefined | null) => this.formatNumber(v);
+  protected readonly hoursDisplay = (v: number) => formatHoursDisplay(v);
 
   // Modals
   protected readonly showUsageModal = signal(false);
@@ -75,10 +82,34 @@ export class RepresentativeHomeComponent implements OnInit {
     const f = this.dashboard()?.farmers.find((item) => item.id === id);
     return f ? f.remainingHours : null;
   });
-  protected readonly usageHours = signal('');
+  protected readonly usageHoursPart = signal('');
+  protected readonly usageMinutesPart = signal('');
   protected readonly usageDesc = signal('');
   protected readonly usageDate = signal('');
   protected readonly usageDateIso = signal('');
+  protected readonly usageReceivedFrom = signal('');
+  protected readonly usageDeliveredTo = signal('');
+
+  protected readonly availableWellFarmers = computed(() => {
+    const list = this.dashboard()?.farmers || [];
+    const currentId = this.selectedFarmerForUsage();
+    return list
+      .filter((f) => f.id !== currentId)
+      .map((f) => ({
+        wellFarmerId: f.wellFarmerId,
+        name: f.name,
+      }));
+  });
+
+  protected readonly totalUsageHours = computed(() =>
+    calculateTotalHours(this.usageHoursPart(), this.usageMinutesPart()),
+  );
+
+  protected readonly parsedUsagePreview = computed(() => {
+    const total = this.totalUsageHours();
+    if (total === null || total <= 0) return '';
+    return formatHoursDisplay(total);
+  });
 
   // Add Farmer form state
   protected readonly addFarmerModel = signal({
@@ -170,8 +201,11 @@ export class RepresentativeHomeComponent implements OnInit {
   // --- Usage Modal Logic ---
   protected openRecordUsageForFarmer(farmerId: string): void {
     this.selectedFarmerForUsage.set(farmerId);
-    this.usageHours.set('');
+    this.usageHoursPart.set('');
+    this.usageMinutesPart.set('');
     this.usageDesc.set('');
+    this.usageReceivedFrom.set('');
+    this.usageDeliveredTo.set('');
     const today = getTodayJalali();
     this.usageDate.set(formatJalali(today.year, today.month, today.day));
     this.usageDateIso.set(jalaliToIso(today.year, today.month, today.day));
@@ -181,8 +215,11 @@ export class RepresentativeHomeComponent implements OnInit {
 
   protected openRecordUsageModal(): void {
     this.selectedFarmerForUsage.set('');
-    this.usageHours.set('');
+    this.usageHoursPart.set('');
+    this.usageMinutesPart.set('');
     this.usageDesc.set('');
+    this.usageReceivedFrom.set('');
+    this.usageDeliveredTo.set('');
     const today = getTodayJalali();
     this.usageDate.set(formatJalali(today.year, today.month, today.day));
     this.usageDateIso.set(jalaliToIso(today.year, today.month, today.day));
@@ -197,7 +234,6 @@ export class RepresentativeHomeComponent implements OnInit {
 
   protected submitUsage(): void {
     const farmerId = this.selectedFarmerForUsage();
-    const hours = parseHoursNumber(this.usageHours());
 
     if (!farmerId) {
       const msg = 'لطفاً کشاورز مورد نظر را انتخاب کنید.';
@@ -205,8 +241,28 @@ export class RepresentativeHomeComponent implements OnInit {
       toast.error(msg);
       return;
     }
+
+    const hRaw = normalizeDigits(this.usageHoursPart()).trim();
+    const mRaw = normalizeDigits(this.usageMinutesPart()).trim();
+
+    if (!hRaw && !mRaw) {
+      const msg = 'لطفاً مدت مصرف (ساعت یا دقیقه) را وارد کنید.';
+      this.modalError.set(msg);
+      toast.error(msg);
+      return;
+    }
+
+    const m = mRaw ? parseInt(mRaw, 10) : 0;
+    if (isNaN(m) || m < 0 || m > 59) {
+      const msg = 'مقدار دقیقه باید بین ۰ تا ۵۹ باشد.';
+      this.modalError.set(msg);
+      toast.error(msg);
+      return;
+    }
+
+    const hours = this.totalUsageHours();
     if (hours === null || hours <= 0) {
-      const msg = 'مدت زمان مصرف باید یک عدد بزرگتر از صفر (ساعت) باشد.';
+      const msg = 'مدت زمان مصرف باید بیشتر از صفر باشد.';
       this.modalError.set(msg);
       toast.error(msg);
       return;
@@ -227,7 +283,7 @@ export class RepresentativeHomeComponent implements OnInit {
     }
 
     if (hours > farmer.remainingHours) {
-      const msg = `میزان مصرف (${faNumber(hours)} ساعت) نمی‌تواند بیشتر از باقیمانده سهمیه (${faNumber(farmer.remainingHours)} ساعت) باشد.`;
+      const msg = `میزان مصرف (${formatHoursDisplay(hours)}) نمی‌تواند بیشتر از باقیمانده سهمیه (${formatHoursDisplay(farmer.remainingHours)}) باشد.`;
       this.modalError.set(msg);
       toast.error(msg);
       return;
@@ -239,8 +295,16 @@ export class RepresentativeHomeComponent implements OnInit {
     this.submitting.set(true);
     this.modalError.set('');
 
-    const newRemaining = Number((farmer.remainingHours - hours).toFixed(2));
+    const newRemaining = Number((farmer.remainingHours - hours).toFixed(4));
     const usedAtIso = this.usageDateIso() ? `${this.usageDateIso()}T12:00:00Z` : undefined;
+
+    const receivedVal = this.usageReceivedFrom();
+    const turnedOnPump = receivedVal === 'pump_on';
+    const receivedFromWellFarmerId = receivedVal && receivedVal !== 'pump_on' ? receivedVal : undefined;
+
+    const deliveredVal = this.usageDeliveredTo();
+    const turnedOffPump = deliveredVal === 'pump_off';
+    const deliveredToWellFarmerId = deliveredVal && deliveredVal !== 'pump_off' ? deliveredVal : undefined;
 
     this.portalData
       .recordWaterUsage$({
@@ -253,6 +317,10 @@ export class RepresentativeHomeComponent implements OnInit {
         farmerName: farmer.name,
         remainingHours: newRemaining,
         wellId: this.dashboard()?.well?.id,
+        turnedOnPump,
+        receivedFromWellFarmerId,
+        turnedOffPump,
+        deliveredToWellFarmerId,
       })
       .pipe(
         takeUntilDestroyed(this.destroyRef),
@@ -260,11 +328,11 @@ export class RepresentativeHomeComponent implements OnInit {
           this.closeUsageModal();
           if (result.smsSent) {
             toast.success(
-              `مصرف ${faNumber(hours)} ساعت برای «${farmer.name}» ثبت شد و پیامک ارسال گردید.`,
+              `مصرف ${formatHoursDisplay(hours)} برای «${farmer.name}» ثبت شد و پیامک ارسال گردید.`,
             );
           } else {
             toast.success(
-              `مصرف ${faNumber(hours)} ساعت برای «${farmer.name}» ثبت شد (مانده: ${faNumber(newRemaining)} ساعت).`,
+              `مصرف ${formatHoursDisplay(hours)} برای «${farmer.name}» ثبت شد (مانده: ${formatHoursDisplay(newRemaining)}).`,
             );
             if (result.message) {
               toast.warning(`وضعیت پیامک: ${result.message}`);

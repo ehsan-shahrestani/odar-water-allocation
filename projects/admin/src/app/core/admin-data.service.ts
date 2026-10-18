@@ -524,8 +524,9 @@ export class AdminDataService {
       const usedHours = alloc ? usageMap.get(alloc.id) || 0 : undefined;
       const remainingHours =
         allocatedHours !== undefined
-          ? Math.max(0, Math.round((allocatedHours - (usedHours || 0)) * 100) / 100)
+          ? Math.max(0, Math.round((allocatedHours - (usedHours || 0)) * 10000) / 10000)
           : undefined;
+
 
       return {
         id: row.id,

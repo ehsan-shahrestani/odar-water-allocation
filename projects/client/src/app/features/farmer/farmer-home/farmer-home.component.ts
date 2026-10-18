@@ -8,7 +8,7 @@ import { ButtonComponent } from '../../../shared/button/button.component';
 import { CardComponent } from '../../../shared/card/card.component';
 import { PageHeaderComponent } from '../../../shared/page-header/page-header.component';
 import { LogoutButton } from '../../../shared/logout-button/logout-button';
-import { faNumber } from '../../../core/mock-data';
+import { faNumber, formatHoursDisplay } from '../../../core/mock-data';
 
 @Component({
   selector: 'app-farmer-home',
@@ -54,16 +54,16 @@ import { faNumber } from '../../../core/mock-data';
             <app-card [emphasis]="true">
               <p class="balance-label">مانده سهمیه آب شما</p>
               <div class="balance-number">
-                {{ number(dashboard()?.remainingHours ?? 0) }} <span>ساعت</span>
+                {{ hoursDisplay(dashboard()?.remainingHours ?? 0) }}
               </div>
               <div class="quota-summary">
                 <div>
                   <span>سهمیه کل</span>
-                  <strong>{{ number(dashboard()?.quotaHours ?? 0) }} <small>ساعت</small></strong>
+                  <strong>{{ hoursDisplay(dashboard()?.quotaHours ?? 0) }}</strong>
                 </div>
                 <div>
                   <span>مصرف‌شده</span>
-                  <strong>{{ number(dashboard()?.usedHours ?? 0) }} <small>ساعت</small></strong>
+                  <strong>{{ hoursDisplay(dashboard()?.usedHours ?? 0) }}</strong>
                 </div>
               </div>
             </app-card>
@@ -113,11 +113,21 @@ import { faNumber } from '../../../core/mock-data';
                       <li>
                         <div>
                           <span>{{ usage.date }}</span>
+                          @if (usage.receivedFromText || usage.deliveredToText) {
+                            <div class="text-xs text-ink-muted mt-0.5 flex flex-wrap gap-x-2">
+                              @if (usage.receivedFromText) {
+                                <span><span class="text-stone-400">تحویل از:</span> {{ usage.receivedFromText }}</span>
+                              }
+                              @if (usage.deliveredToText) {
+                                <span><span class="text-stone-400">تحویل به:</span> {{ usage.deliveredToText }}</span>
+                              }
+                            </div>
+                          }
                           @if (usage.description) {
                             <p class="text-xs text-ink-muted mt-0.5">{{ usage.description }}</p>
                           }
                         </div>
-                        <strong>{{ number(usage.hours) }} <small>ساعت</small></strong>
+                        <strong>{{ hoursDisplay(usage.hours) }}</strong>
                       </li>
                     }
                   </ul>
@@ -145,6 +155,8 @@ export class FarmerHomeComponent implements OnInit {
   protected readonly error = signal('');
   protected readonly dashboard = signal<FarmerDashboardData | null>(null);
   protected readonly number = faNumber;
+  protected readonly hoursDisplay = (v: number) => formatHoursDisplay(v);
+
 
   protected get farmerName(): () => string {
     return () => this.auth.currentProfile()?.full_name || 'کشاورز محترم';

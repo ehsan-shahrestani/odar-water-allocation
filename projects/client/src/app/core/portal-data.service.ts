@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, defer, from } from 'rxjs';
-import { faNumber } from './mock-data';
+import { faNumber, formatHoursDisplay } from './mock-data';
 import { SupabaseService } from './supabase.service';
 
 function formatJalaliDateWords(dateStr: string | null | undefined): string {
@@ -37,6 +37,10 @@ export interface FarmerDashboardData {
     date: string;
     hours: number;
     description: string | null;
+    turnedOnPump?: boolean;
+    turnedOffPump?: boolean;
+    receivedFromText?: string | null;
+    deliveredToText?: string | null;
   }>;
 }
 
@@ -104,6 +108,15 @@ export interface FarmerWellDetail {
     date: string;
     hours: number;
     description: string | null;
+    turnedOnPump?: boolean;
+    turnedOffPump?: boolean;
+    receivedFromText?: string | null;
+    deliveredToText?: string | null;
+  }>;
+  wellFarmers: Array<{
+    wellFarmerId: string;
+    farmerId: string;
+    name: string;
   }>;
 }
 
@@ -182,7 +195,7 @@ export class PortalDataService {
     // 4. Find usages recorded for this allocation
     const { data: usages, error: usagesError } = await this.supabase
       .from('water_usages')
-      .select('id, consumed_hours, used_at, description')
+      .select('id, consumed_hours, used_at, description, turned_on_pump, turned_off_pump, received_from_well_farmer_id, delivered_to_well_farmer_id')
       .eq('allocation_id', alloc.id)
       .order('used_at', { ascending: false })
       .limit(10);
@@ -199,23 +212,58 @@ export class PortalDataService {
       };
     }
 
+    // Fetch well farmers to resolve transfer names
+    const { data: wellFarmersData } = await this.supabase
+      .from('well_farmers')
+      .select('id, display_name, profiles(full_name)')
+      .eq('well_id', well.id);
+
+    const farmerNameMap = new Map<string, string>();
+    for (const item of wellFarmersData || []) {
+      const p = item.profiles as unknown as { full_name: string } | null;
+      farmerNameMap.set(item.id, item.display_name?.trim() || p?.full_name || 'کشاورز');
+    }
+
     const usedHours = usages.reduce((acc, u) => acc + (Number(u.consumed_hours) || 0), 0);
-    const remainingHours = Math.max(0, Math.round((quotaHours - usedHours) * 100) / 100);
+    const remainingHours = Math.max(0, Math.round((quotaHours - usedHours) * 10000) / 10000);
 
     return {
       well,
       waterYear,
       allocationId: alloc.id,
       quotaHours,
-      usedHours: Math.round(usedHours * 100) / 100,
+      usedHours: Math.round(usedHours * 10000) / 10000,
       remainingHours,
-      recentUsages: usages.map((u) => ({
-        id: u.id,
-        date: formatJalaliDateWords(u.used_at),
-        hours: Number(u.consumed_hours) || 0,
-        description: u.description,
-      })),
+      recentUsages: usages.map((u) => {
+        let receivedFromText: string | null = null;
+        if (u.turned_on_pump) {
+          receivedFromText = 'روشن کردن چاه';
+        } else if (u.received_from_well_farmer_id) {
+          const fromName = farmerNameMap.get(u.received_from_well_farmer_id);
+          receivedFromText = fromName ? `تحویل از ${fromName}` : 'تحویل از هم‌چاهی';
+        }
+
+        let deliveredToText: string | null = null;
+        if (u.turned_off_pump) {
+          deliveredToText = 'خاموش کردن چاه';
+        } else if (u.delivered_to_well_farmer_id) {
+          const toName = farmerNameMap.get(u.delivered_to_well_farmer_id);
+          deliveredToText = toName ? `تحویل به ${toName}` : 'تحویل به هم‌چاهی';
+        }
+
+        return {
+          id: u.id,
+          date: formatJalaliDateWords(u.used_at),
+          hours: Number(u.consumed_hours) || 0,
+          description: u.description,
+          turnedOnPump: !!u.turned_on_pump,
+          turnedOffPump: !!u.turned_off_pump,
+          receivedFromText,
+          deliveredToText,
+        };
+      }),
     };
+
   }
 
   /**
@@ -321,7 +369,7 @@ export class PortalDataService {
           usedHours = (usages || []).reduce((sum, u) => sum + (Number(u.consumed_hours) || 0), 0);
         }
 
-        const remaining = Math.max(0, Math.round((quotaHours - usedHours) * 100) / 100);
+        const remaining = Math.max(0, Math.round((quotaHours - usedHours) * 10000) / 10000);
 
         return {
           id: farmerProfileId,
@@ -329,8 +377,8 @@ export class PortalDataService {
           phone,
           wellFarmerId: item.id,
           allocationId: alloc?.id || null,
-          quotaHours: Math.round(quotaHours * 100) / 100,
-          usedHours: Math.round(usedHours * 100) / 100,
+          quotaHours: Math.round(quotaHours * 10000) / 10000,
+          usedHours: Math.round(usedHours * 10000) / 10000,
           remainingHours: remaining,
         };
       }),
@@ -384,6 +432,10 @@ export class PortalDataService {
     farmerName?: string;
     remainingHours?: number;
     wellId?: string;
+    turnedOnPump?: boolean;
+    receivedFromWellFarmerId?: string;
+    turnedOffPump?: boolean;
+    deliveredToWellFarmerId?: string;
   }): Promise<{ smsSent: boolean; message?: string; cost?: number }> {
     // Check remaining quota to prevent exceeding allocation
     const { data: alloc, error: allocErr } = await this.supabase
@@ -396,11 +448,11 @@ export class PortalDataService {
       const totalQuota = alloc.allocated_hours || 0;
       const usages = (alloc.water_usages as Array<{ consumed_hours: number }>) || [];
       const totalUsed = usages.reduce((sum, u) => sum + (u.consumed_hours || 0), 0);
-      const remaining = Number((totalQuota - totalUsed).toFixed(2));
+      const remaining = Number((totalQuota - totalUsed).toFixed(4));
 
-      if (params.consumedHours > remaining) {
+      if (params.consumedHours > remaining + 0.0001) {
         throw new Error(
-          `میزان مصرف نمی‌تواند بیشتر از باقیمانده سهمیه (${faNumber(remaining)} ساعت) باشد.`,
+          `میزان مصرف نمی‌تواند بیشتر از باقیمانده سهمیه (${formatHoursDisplay(remaining)}) باشد.`,
         );
       }
     }
@@ -411,6 +463,10 @@ export class PortalDataService {
       description: params.description?.trim() || null,
       used_at: params.usedAt || new Date().toISOString(),
       created_by: params.createdBy,
+      turned_on_pump: params.turnedOnPump || false,
+      received_from_well_farmer_id: params.receivedFromWellFarmerId || null,
+      turned_off_pump: params.turnedOffPump || false,
+      delivered_to_well_farmer_id: params.deliveredToWellFarmerId || null,
     });
 
     if (error) {
@@ -577,6 +633,26 @@ export class PortalDataService {
     };
     const wellFarmerId = wf.id;
 
+    // Fetch well farmers for transfer resolution and dropdown
+    const { data: wellFarmersData } = await this.supabase
+      .from('well_farmers')
+      .select('id, farmer_id, display_name, profiles(id, full_name, phone)')
+      .eq('well_id', params.wellId);
+
+    const wellFarmers = (wellFarmersData || []).map((wfItem) => {
+      const p = wfItem.profiles as unknown as { id: string; full_name: string; phone: string } | null;
+      return {
+        wellFarmerId: wfItem.id,
+        farmerId: wfItem.farmer_id || p?.id || '',
+        name: wfItem.display_name?.trim() || p?.full_name || 'کشاورز',
+      };
+    });
+
+    const farmerNameMap = new Map<string, string>();
+    for (const f of wellFarmers) {
+      farmerNameMap.set(f.wellFarmerId, f.name);
+    }
+
     // If no water year is specified, return the farmer info without allocation
     if (!params.waterYearId) {
       return {
@@ -587,6 +663,7 @@ export class PortalDataService {
         usedHours: 0,
         remainingHours: 0,
         usages: [],
+        wellFarmers,
       };
     }
 
@@ -607,6 +684,7 @@ export class PortalDataService {
         usedHours: 0,
         remainingHours: 0,
         usages: [],
+        wellFarmers,
       };
     }
 
@@ -615,28 +693,52 @@ export class PortalDataService {
     // 3. Fetch usages for this allocation
     const { data: usages } = await this.supabase
       .from('water_usages')
-      .select('id, consumed_hours, used_at, description')
+      .select('id, consumed_hours, used_at, description, turned_on_pump, turned_off_pump, received_from_well_farmer_id, delivered_to_well_farmer_id')
       .eq('allocation_id', alloc.id)
       .order('used_at', { ascending: false });
 
     const usageList = usages || [];
     const usedHours = usageList.reduce((acc, u) => acc + (Number(u.consumed_hours) || 0), 0);
-    const remainingHours = Math.max(0, Math.round((quotaHours - usedHours) * 100) / 100);
+    const remainingHours = Math.max(0, Math.round((quotaHours - usedHours) * 10000) / 10000);
 
     return {
       farmer: farmerInfo,
       wellFarmerId,
       allocationId: alloc.id,
-      quotaHours: Math.round(quotaHours * 100) / 100,
-      usedHours: Math.round(usedHours * 100) / 100,
+      quotaHours: Math.round(quotaHours * 10000) / 10000,
+      usedHours: Math.round(usedHours * 10000) / 10000,
       remainingHours,
-      usages: usageList.map((u) => ({
-        id: u.id,
-        date: formatJalaliDateWords(u.used_at),
-        hours: Number(u.consumed_hours) || 0,
-        description: u.description,
-      })),
+      usages: usageList.map((u) => {
+        let receivedFromText: string | null = null;
+        if (u.turned_on_pump) {
+          receivedFromText = 'روشن کردن چاه';
+        } else if (u.received_from_well_farmer_id) {
+          const fromName = farmerNameMap.get(u.received_from_well_farmer_id);
+          receivedFromText = fromName ? `تحویل از ${fromName}` : 'تحویل از هم‌چاهی';
+        }
+
+        let deliveredToText: string | null = null;
+        if (u.turned_off_pump) {
+          deliveredToText = 'خاموش کردن چاه';
+        } else if (u.delivered_to_well_farmer_id) {
+          const toName = farmerNameMap.get(u.delivered_to_well_farmer_id);
+          deliveredToText = toName ? `تحویل به ${toName}` : 'تحویل به هم‌چاهی';
+        }
+
+        return {
+          id: u.id,
+          date: formatJalaliDateWords(u.used_at),
+          hours: Number(u.consumed_hours) || 0,
+          description: u.description,
+          turnedOnPump: !!u.turned_on_pump,
+          turnedOffPump: !!u.turned_off_pump,
+          receivedFromText,
+          deliveredToText,
+        };
+      }),
+      wellFarmers,
     };
+
   }
 
   /**
@@ -816,9 +918,14 @@ export class PortalDataService {
     farmerName?: string;
     remainingHours?: number;
     wellId?: string;
+    turnedOnPump?: boolean;
+    receivedFromWellFarmerId?: string;
+    turnedOffPump?: boolean;
+    deliveredToWellFarmerId?: string;
   }): Observable<{ smsSent: boolean; message?: string; cost?: number }> {
     return defer(() => from(this.recordWaterUsage(params)));
   }
+
 
   addFarmerToWell$(params: {
     wellId: string;

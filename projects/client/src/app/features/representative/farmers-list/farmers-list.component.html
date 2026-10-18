@@ -125,7 +125,7 @@
                   }
                 </td>
                 <td class="td-num text-amber-700">
-                  <strong>{{ number(farmer.usedHours) }}</strong> <small class="unit">ساعت</small>
+                  <strong>{{ hoursDisplay(farmer.usedHours) }}</strong>
                 </td>
                 <td class="td-num">
                   @if (farmer.quotaHours > 0) {
@@ -134,7 +134,7 @@
                       [class.positive]="farmer.remainingHours > 0"
                       [class.negative]="farmer.remainingHours <= 0"
                     >
-                      {{ number(farmer.remainingHours) }} ساعت
+                      {{ hoursDisplay(farmer.remainingHours) }}
                     </span>
                   } @else {
                     <span class="text-stone-400 text-xs">—</span>
@@ -240,7 +240,7 @@
                 [class.positive]="farmer.remainingHours > 0"
                 [class.negative]="farmer.remainingHours <= 0"
               >
-                مانده: {{ number(farmer.remainingHours) }} س
+                مانده: {{ hoursDisplay(farmer.remainingHours) }}
               </span>
             } @else {
               <span class="text-stone-400 text-xs">بدون سهمیه</span>
@@ -256,8 +256,7 @@
             </div>
             <div class="fmc-stat-item">
               <span class="fmc-lbl">مصرف‌شده</span>
-              <strong class="fmc-val text-amber-700">{{ number(farmer.usedHours) }}</strong>
-              <small class="fmc-unit">ساعت</small>
+              <strong class="fmc-val text-amber-700">{{ hoursDisplay(farmer.usedHours) }}</strong>
             </div>
             <div class="fmc-stat-item">
               <span class="fmc-lbl">درصد مصرف</span>
@@ -469,30 +468,69 @@
               <option value="">-- انتخاب کشاورز --</option>
               @for (farmer of dashboard()?.farmers; track farmer.id) {
                 <option [value]="farmer.id">
-                  {{ farmer.name }} (باقی‌مانده: {{ number(farmer.remainingHours) }} ساعت)
+                  {{ farmer.name }} (باقی‌مانده: {{ hoursDisplay(farmer.remainingHours) }})
                 </option>
               }
             </select>
           </div>
 
           <div class="form-group">
-            <label for="usage-hours-input" class="form-label">میزان مصرف (ساعت) *</label>
-            <input
-              id="usage-hours-input"
-              type="text"
-              inputmode="decimal"
-              class="form-input"
-              placeholder="مثال: ۸"
-              [value]="usageHours()"
-              (input)="usageHours.set($any($event.target).value)"
-              required
-            />
-            @if (selectedFarmerUsageRemaining() !== null) {
-              <small class="form-hint">
-                حداکثر مجاز برای این کشاورز: <strong>{{ number(selectedFarmerUsageRemaining()) }} ساعت</strong>
-              </small>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="form-label mb-0">مدت زمان مصرف *</span>
+              @if (selectedFarmerUsageRemaining() !== null) {
+                <span class="text-xs text-stone-600 font-medium">
+                  حداکثر مجاز:
+                  <strong class="text-emerald-800"
+                    >{{ hoursDisplay(selectedFarmerUsageRemaining()!) }}</strong
+                  >
+                </span>
+              }
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="list-usage-minutes-part" class="sr-only">دقیقه</label>
+                <div class="relative">
+                  <input
+                    id="list-usage-minutes-part"
+                    type="text"
+                    inputmode="numeric"
+                    class="form-input text-center font-bold pl-12 pr-3"
+                    placeholder="۰"
+                    [value]="usageMinutesPart()"
+                    (input)="usageMinutesPart.set($any($event.target).value)"
+                  />
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium pointer-events-none select-none">دقیقه</span>
+                </div>
+              </div>
+
+              <div>
+                <label for="list-usage-hours-part" class="sr-only">ساعت</label>
+                <div class="relative">
+                  <input
+                    id="list-usage-hours-part"
+                    type="text"
+                    inputmode="numeric"
+                    class="form-input text-center font-bold pl-12 pr-3"
+                    placeholder="۰"
+                    [value]="usageHoursPart()"
+                    (input)="usageHoursPart.set($any($event.target).value)"
+                  />
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium pointer-events-none select-none">ساعت</span>
+                </div>
+              </div>
+            </div>
+
+            @if (parsedUsagePreview()) {
+              <div class="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200/80 rounded-lg px-3 py-1.5 mt-2 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-emerald-600 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" />
+                </svg>
+                <span>مجموع کارکرد: <strong>{{ parsedUsagePreview() }}</strong></span>
+              </div>
             }
           </div>
+
 
           <div class="form-group">
             <app-persian-datepicker
@@ -501,6 +539,48 @@
               [(value)]="usageDate"
               [(isoValue)]="usageDateIso"
             />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="form-group">
+              <label for="list-usage-received-from" class="form-label">تحویل آب از</label>
+              <select
+                id="list-usage-received-from"
+                class="form-input"
+                [value]="usageReceivedFrom()"
+                (change)="usageReceivedFrom.set($any($event.target).value)"
+              >
+                <option value="">— نامشخص —</option>
+                <option value="pump_on">⚡ روشن کردن چاه</option>
+                @if (availableWellFarmers().length > 0) {
+                  <optgroup label="کشاورزان چاه">
+                    @for (wf of availableWellFarmers(); track wf.wellFarmerId) {
+                      <option [value]="wf.wellFarmerId">{{ wf.name }}</option>
+                    }
+                  </optgroup>
+                }
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="list-usage-delivered-to" class="form-label">تحویل آب به</label>
+              <select
+                id="list-usage-delivered-to"
+                class="form-input"
+                [value]="usageDeliveredTo()"
+                (change)="usageDeliveredTo.set($any($event.target).value)"
+              >
+                <option value="">— نامشخص —</option>
+                <option value="pump_off">🛑 خاموش کردن چاه</option>
+                @if (availableWellFarmers().length > 0) {
+                  <optgroup label="کشاورزان چاه">
+                    @for (wf of availableWellFarmers(); track wf.wellFarmerId) {
+                      <option [value]="wf.wellFarmerId">{{ wf.name }}</option>
+                    }
+                  </optgroup>
+                }
+              </select>
+            </div>
           </div>
 
           <div class="form-group">
