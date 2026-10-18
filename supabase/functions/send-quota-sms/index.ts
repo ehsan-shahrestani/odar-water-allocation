@@ -72,7 +72,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   if (!apiKey || !supabaseUrl || !serviceRoleKey) {
     console.error('KAVENEGAR_API_KEY is not configured');
-    return jsonResponse({ error: 'کلید وب‌سرویس پیامک کاوه‌نگار تنظیم نشده است.' }, 500);
+    return jsonResponse({ error: 'سرویس ارسال پیامک در دسترس نیست.' }, 500);
   }
 
   try {

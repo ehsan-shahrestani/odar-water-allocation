@@ -21,6 +21,16 @@ interface AuthFailure {
   status?: unknown;
 }
 
+export function sanitizeAuthErrorMessage(message: string): string {
+  if (!message) return 'خطا در ارسال کد تایید پیامکی. لطفاً دوباره تلاش کنید.';
+  return message
+    .replace(/از طریق کاوه‌نگار\s*/g, '')
+    .replace(/از طریق کاوه نگار\s*/g, '')
+    .replace(/کاوه‌نگار/g, 'سرویس پیامک')
+    .replace(/کاوه نگار/g, 'سرویس پیامک')
+    .replace(/kavenegar/gi, 'سرویس پیامک');
+}
+
 export function getPhoneOtpErrorMessage(error: unknown): string {
   const failure =
     typeof error === 'object' && error !== null ? (error as AuthFailure) : {};
@@ -169,11 +179,12 @@ export class AuthService {
     ).pipe(
       switchMap(({ data, error: fetchError }) => {
         if (fetchError || !data?.success) {
-          const userMsg =
+          const rawMsg =
             data?.error ||
             (fetchError
               ? getPhoneOtpErrorMessage(fetchError)
               : 'خطا در ارسال کد تایید پیامکی. لطفاً دوباره تلاش کنید.');
+          const userMsg = sanitizeAuthErrorMessage(rawMsg);
           return throwError(() => new AdminAuthError(userMsg));
         }
         return of(undefined);
@@ -219,7 +230,8 @@ export class AuthService {
     ).pipe(
       switchMap(async ({ data, error: fetchError }) => {
         if (fetchError || !data?.success || !data?.session) {
-          const msg = data?.error || 'کد تایید اشتباه یا منقضی شده است.';
+          const rawMsg = data?.error || 'کد تایید اشتباه یا منقضی شده است.';
+          const msg = sanitizeAuthErrorMessage(rawMsg);
           console.error('Client OTP verification failed:', msg);
           throw new AdminAuthError(msg);
         }

@@ -207,13 +207,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
       const providerResult = evaluateKavenegarLookupResponse(await smsResponse.json());
       if (!smsResponse.ok || !providerResult.ok) {
         await supabaseAdmin.from('client_otp_codes').delete().eq('id', insertedCode.id);
-        console.error('Kavenegar SMS delivery failed', smsResponse.status);
-        return jsonResponse({ error: 'ارسال پیامک از طریق کاوه‌نگار با خطا مواجه شد.' }, 502);
+        console.error('SMS delivery failed', smsResponse.status);
+        return jsonResponse({ error: 'ارسال پیامک با خطا مواجه شد. لطفاً دوباره تلاش کنید.' }, 502);
       }
     } catch (error: unknown) {
       await supabaseAdmin.from('client_otp_codes').delete().eq('id', insertedCode.id);
-      console.error('Kavenegar SMS request failed', error);
-      return jsonResponse({ error: 'ارتباط با سرویس پیامک ممکن نشد.' }, 502);
+      console.error('SMS request failed', error);
+      return jsonResponse({ error: 'ارتباط با سرویس پیامک ممکن نشد. لطفاً دوباره تلاش کنید.' }, 502);
     }
 
     return jsonResponse({

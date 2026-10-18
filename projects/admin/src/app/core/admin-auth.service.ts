@@ -27,6 +27,16 @@ interface AdminOtpResponse {
   error?: string;
 }
 
+function sanitizeAuthErrorMessage(message: string): string {
+  if (!message) return 'خطا در ارسال کد تایید پیامکی. لطفاً دوباره تلاش کنید.';
+  return message
+    .replace(/از طریق کاوه‌نگار\s*/g, '')
+    .replace(/از طریق کاوه نگار\s*/g, '')
+    .replace(/کاوه‌نگار/g, 'سرویس پیامک')
+    .replace(/کاوه نگار/g, 'سرویس پیامک')
+    .replace(/kavenegar/gi, 'سرویس پیامک');
+}
+
 function passwordLoginErrorMessage(error: AuthError): string {
   switch (error.code) {
     case 'email_provider_disabled':
@@ -313,15 +323,13 @@ export class AdminAuthService {
               catchError(() => of({})),
               switchMap((payload: { error?: unknown }) => {
                 if (typeof payload?.error === 'string') message = payload.error;
-                return throwError(
-                  () => new AdminAuthError(message || 'ارتباط با سرویس احراز هویت ممکن نشد.'),
-                );
+                const cleanMsg = sanitizeAuthErrorMessage(message || 'ارتباط با سرویس احراز هویت ممکن نشد.');
+                return throwError(() => new AdminAuthError(cleanMsg));
               }),
             );
           }
-          return throwError(
-            () => new AdminAuthError(message || 'ارتباط با سرویس احراز هویت ممکن نشد.'),
-          );
+          const cleanMsg = sanitizeAuthErrorMessage(message || 'ارتباط با سرویس احراز هویت ممکن نشد.');
+          return throwError(() => new AdminAuthError(cleanMsg));
         }
         return of(data);
       }),
