@@ -143,6 +143,41 @@ jobs:
         id: restore
         run: python3 scripts/verify_backup_restore.py "$BACKUP_DIR/downloaded.tar.gz"
 
+      - name: Generate and upload RTL Excel sheets per well to S3
+        id: export_excel
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          endpoint="$S3_ENDPOINT"
+          if [[ "$endpoint" != https://* ]]; then
+            if [[ "$endpoint" == http://* ]]; then
+              echo "::error::Backup endpoint must use HTTPS."
+              exit 1
+            fi
+            endpoint="https://$endpoint"
+          fi
+
+          python3 -m venv "$BACKUP_DIR/.venv"
+          "$BACKUP_DIR/.venv/bin/pip" install --quiet -r scripts/requirements-backup.txt
+
+          wells_dir="$BACKUP_DIR/wells"
+          "$BACKUP_DIR/.venv/bin/python" scripts/export_wells_excel.py \
+            "$BACKUP_DIR/downloaded.tar.gz" \
+            --output-dir "$wells_dir"
+
+          aws configure set default.s3.signature_version s3v4
+          aws configure set default.s3.addressing_style path
+
+          echo "Syncing well Excel files to s3://$S3_BUCKET_NAME/wells/..."
+          aws s3 sync \
+            "$wells_dir" \
+            "s3://$S3_BUCKET_NAME/wells" \
+            --endpoint-url "$endpoint" \
+            --no-progress
+
+          echo "All well Excel spreadsheets successfully exported and synced to S3."
+
       - name: Send success notification
         if: success() && (github.event_name == 'schedule' || inputs.notify)
         continue-on-error: true

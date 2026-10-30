@@ -51,3 +51,9 @@ Thumbs.db
 *.jks
 android/local.properties
 dist/apk/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
