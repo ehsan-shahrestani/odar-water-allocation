@@ -204,15 +204,36 @@ Deno.serve(async (req: Request): Promise<Response> => {
         signal: AbortSignal.timeout(10_000),
       });
 
-      const providerResult = evaluateKavenegarLookupResponse(await smsResponse.json());
+      let responseText = '';
+      let responseBody: unknown = null;
+      try {
+        responseText = await smsResponse.text();
+        responseBody = JSON.parse(responseText);
+      } catch {
+        // Response was not valid JSON
+      }
+
+      const providerResult = evaluateKavenegarLookupResponse(responseBody);
       if (!smsResponse.ok || !providerResult.ok) {
         await supabaseAdmin.from('client_otp_codes').delete().eq('id', insertedCode.id);
-        console.error('SMS delivery failed', smsResponse.status);
+        console.error('Kavenegar client-otp send failed:', {
+          httpStatus: smsResponse.status,
+          providerStatus: providerResult.ok ? null : providerResult.providerStatus,
+          providerMessage: providerResult.ok ? null : providerResult.providerMessage,
+          messageStatus: providerResult.ok ? null : providerResult.messageStatus,
+          statusText: providerResult.ok ? null : providerResult.statusText,
+          reason: providerResult.ok ? 'http-not-ok' : providerResult.reason,
+          rawResponse: responseText ? responseText.slice(0, 500) : null,
+          phone: maskPhone(receptor),
+        });
         return jsonResponse({ error: 'ارسال پیامک با خطا مواجه شد. لطفاً دوباره تلاش کنید.' }, 502);
       }
     } catch (error: unknown) {
       await supabaseAdmin.from('client_otp_codes').delete().eq('id', insertedCode.id);
-      console.error('SMS request failed', error);
+      console.error('Kavenegar client-otp request failed:', {
+        error: error instanceof Error ? error.message : String(error),
+        phone: maskPhone(receptor),
+      });
       return jsonResponse({ error: 'ارتباط با سرویس پیامک ممکن نشد. لطفاً دوباره تلاش کنید.' }, 502);
     }
 

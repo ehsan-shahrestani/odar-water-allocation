@@ -8,6 +8,7 @@ import {
   RequestError,
   requireId,
 } from '../_shared/authorization.ts';
+import { maskIranianMobile } from '../send-sms-kavenegar/kavenegar.ts';
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
@@ -158,18 +159,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const endpoint = `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/sms/send.json`;
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: form,
-      signal: AbortSignal.timeout(10_000),
-    });
+    let response: Response;
+    try {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: form,
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (fetchError: unknown) {
+      console.error('Kavenegar quota SMS request failed', {
+        error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+        receptor: maskIranianMobile(receptor),
+      });
+      return jsonResponse(
+        { error: 'ارتباط با سرویس پیامک ممکن نشد. لطفاً دوباره تلاش کنید.' },
+        502,
+      );
+    }
 
+    let rawResponse = '';
     let kavenegarData: KavenegarResponse | null = null;
     try {
-      kavenegarData = (await response.json()) as KavenegarResponse;
+      rawResponse = await response.text();
+      kavenegarData = JSON.parse(rawResponse) as KavenegarResponse;
     } catch {
-      // ignore
+      // non-JSON response from provider
     }
 
     const status = kavenegarData?.return?.status;
@@ -178,6 +193,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
         httpStatus: response.status,
         kavenegarStatus: status,
         message: kavenegarData?.return?.message,
+        rawResponse: rawResponse ? rawResponse.slice(0, 500) : null,
+        receptor: maskIranianMobile(receptor),
       });
       return jsonResponse(
         {
@@ -192,6 +209,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const entryStatus = entry?.status;
 
     if (entryStatus === 14) {
+      console.warn('Kavenegar quota SMS blocked by blacklist:', {
+        receptor: maskIranianMobile(receptor),
+        entryStatus,
+        statusText: entry?.statustext,
+      });
       return jsonResponse(
         {
           success: false,
@@ -205,6 +227,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     if (entryStatus === 13) {
+      console.warn('Kavenegar quota SMS cancelled by carrier:', {
+        receptor: maskIranianMobile(receptor),
+        entryStatus,
+        statusText: entry?.statustext,
+      });
       return jsonResponse(
         {
           success: false,

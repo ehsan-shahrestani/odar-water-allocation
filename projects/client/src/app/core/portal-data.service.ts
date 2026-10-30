@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, defer, from } from 'rxjs';
-import { faNumber, formatHoursDisplay } from './mock-data';
+import { formatHoursDisplay } from './mock-data';
 import { SupabaseService } from './supabase.service';
 
 function formatJalaliDateWords(dateStr: string | null | undefined): string {

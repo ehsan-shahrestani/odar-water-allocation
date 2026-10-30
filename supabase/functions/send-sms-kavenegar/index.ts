@@ -227,14 +227,17 @@ Deno.serve(async (request: Request): Promise<Response> => {
       });
 
       stage = "provider_parse";
+      let rawResponse = "";
       let responseBody: unknown;
       try {
-        responseBody = await response.json();
+        rawResponse = await response.text();
+        responseBody = JSON.parse(rawResponse);
       } catch {
         logEvent("error", "provider.response.invalid_json", requestId, requestStartedAt, {
           receptor: maskedReceptor,
           attempt,
           httpStatus: response.status,
+          rawResponse: rawResponse ? rawResponse.slice(0, 500) : null,
           attemptDurationMs: Date.now() - attemptStartedAt,
         });
         return hookErrorResponse(502, "SMS provider returned an invalid response");

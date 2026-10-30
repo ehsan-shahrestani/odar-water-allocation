@@ -379,8 +379,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
             },
           );
 
-          if (kavenegarResponse.ok) {
-            const kavenegarData = await kavenegarResponse.json();
+          let rawBody = '';
+          let kavenegarData: {
+            return?: { status?: number; message?: string };
+            entries?: Array<{ messageid?: number; cost?: number; status?: number; statustext?: string }>;
+          } | null = null;
+          try {
+            rawBody = await kavenegarResponse.text();
+            kavenegarData = JSON.parse(rawBody);
+          } catch {
+            // non-JSON response from provider
+          }
+
+          const kavenegarStatus = kavenegarData?.return?.status;
+          const kavenegarMessage = kavenegarData?.return?.message;
+
+          if (kavenegarResponse.ok && (kavenegarStatus === 200 || kavenegarStatus === 201)) {
             const entry = kavenegarData?.entries?.[0];
             const cost = typeof entry?.cost === 'number' ? entry.cost : Number(entry?.cost || 0);
             const messageId = entry?.messageid ? String(entry.messageid) : null;
@@ -400,10 +414,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
               });
             }
           } else {
-            console.warn('Welcome SMS send failed with status:', kavenegarResponse.status);
+            console.error('Kavenegar welcome SMS failed:', {
+              httpStatus: kavenegarResponse.status,
+              kavenegarStatus,
+              kavenegarMessage,
+              rawResponse: rawBody ? rawBody.slice(0, 500) : null,
+              phone: maskIranianMobile(phone),
+            });
           }
         } catch (smsErr) {
-          console.error('Welcome SMS delivery error:', smsErr);
+          console.error('Welcome SMS delivery error:', {
+            error: smsErr instanceof Error ? smsErr.message : String(smsErr),
+            phone: maskIranianMobile(phone),
+          });
         }
       }
     }

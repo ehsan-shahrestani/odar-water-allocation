@@ -47,7 +47,7 @@ Thumbs.db
 .vercel
 
 # Android & Keystore
-*.keystore
+*.keystore*
 *.jks
 android/local.properties
 dist/apk/
