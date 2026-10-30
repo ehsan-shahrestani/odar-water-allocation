@@ -106,6 +106,42 @@ def sanitize_filename(name: str) -> str:
     return cleaned if cleaned else "چاه_بدون_نام"
 
 
+def to_persian_digits(val: int | str) -> str:
+    """Convert ASCII digits to Persian digits."""
+    return str(val).translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
+
+
+def format_hours_to_human_fa(hours_val: float | int | str | None) -> str:
+    """Format fractional hours as readable Persian string (e.g. '۳ ساعت و ۲۰ دقیقه')."""
+    if hours_val is None or hours_val == "" or hours_val == "-":
+        return "-"
+    try:
+        val = float(hours_val)
+    except (ValueError, TypeError):
+        return str(hours_val)
+
+    if abs(val) < 0.0001:
+        return "۰ ساعت"
+
+    is_negative = val < 0
+    abs_val = abs(val)
+    total_minutes = int(round(abs_val * 60))
+    h = total_minutes // 60
+    m = total_minutes % 60
+
+    h_fa = to_persian_digits(h)
+    m_fa = to_persian_digits(m)
+
+    prefix = "منفی " if is_negative else ""
+    if h == 0 and m == 0:
+        return "۰ ساعت"
+    if m == 0:
+        return f"{prefix}{h_fa} ساعت"
+    if h == 0:
+        return f"{prefix}{m_fa} دقیقه"
+    return f"{prefix}{h_fa} ساعت و {m_fa} دقیقه"
+
+
 # ---------------------------------------------------------------------------
 # SQL COPY Block Parser
 # ---------------------------------------------------------------------------
@@ -274,7 +310,8 @@ def build_well_workbook(
         "عنوان سال آبی",
         "تاریخ شروع (شمسی)",
         "تاریخ پایان (شمسی)",
-        "ساعت به ازای هر سهم",
+        "ساعت به ازای هر سهم (اعشاری)",
+        "معادل به ساعت و دقیقه",
         "تاریخ شروع (میلادی)",
         "تاریخ پایان (میلادی)",
         "تاریخ ثبت (شمسی)",
@@ -302,6 +339,7 @@ def build_well_workbook(
             format_iso_to_jalali(wy.get("start_date")),
             format_iso_to_jalali(wy.get("end_date")),
             h_val,
+            format_hours_to_human_fa(h_per_share),
             wy.get("start_date") or "-",
             wy.get("end_date") or "-",
             format_iso_to_jalali(wy.get("created_at"), include_time=True),
@@ -319,6 +357,8 @@ def build_well_workbook(
                 c.fill = zebra_fill
             if col_idx == 5 and isinstance(h_val, float):
                 c.number_format = "#,##0.00"
+            elif col_idx == 6:
+                c.font = font_bold
 
     style_worksheet(ws_wy)
 
@@ -333,8 +373,9 @@ def build_well_workbook(
         "شماره تماس",
         "سال آبی",
         "سهمیه تخصیص داده شده (ساعت)",
-        "آب مصرف‌شده (ساعت)",
-        "سهمیه باقیمانده (ساعت)",
+        "کل مصرف (ساعت)",
+        "باقیمانده (ساعت)",
+        "باقیمانده (ساعت و دقیقه)",
         "درصد مصرف",
         "وضعیت",
         "تاریخ عضویت در چاه (شمسی)",
@@ -425,6 +466,7 @@ def build_well_workbook(
             f_row["allocated"],
             f_row["consumed"],
             f_row["remaining"],
+            format_hours_to_human_fa(f_row["remaining"]),
             f_row["percent"],
             f_row["status"],
             f_row["created_at"],
@@ -439,16 +481,16 @@ def build_well_workbook(
             if is_even:
                 c.fill = zebra_fill
 
-            if col_idx in (1, 3, 4, 8, 9, 10):
+            if col_idx in (1, 3, 4, 9, 10, 11):
                 c.alignment = Alignment(horizontal="center", vertical="center")
             elif col_idx == 2:
                 c.alignment = Alignment(horizontal="right", vertical="center")
             elif col_idx in (5, 6, 7):
                 c.alignment = Alignment(horizontal="center", vertical="center")
                 c.number_format = "#,##0.00"
-
-            # Color highlight for remaining quota
-            if col_idx == 7:
+            elif col_idx == 8:
+                c.alignment = Alignment(horizontal="center", vertical="center")
+                # Highlight remaining quota if exhausted
                 if f_row["remaining"] <= 0 and f_row["allocated"] > 0:
                     c.font = Font(name=FONT_FAMILY, size=10, bold=True, color="DC2626")  # Red
                 else:
@@ -467,7 +509,8 @@ def build_well_workbook(
         "ساعت",
         "نام کشاورز",
         "سال آبی",
-        "مدت مصرف (ساعت)",
+        "مدت زمان مصرف (ساعت و دقیقه)",
+        "مدت مصرف (ساعت اعشاری)",
         "وضعیت شروع نوبت",
         "وضعیت پایان نوبت",
         "توضیحات",
@@ -520,6 +563,7 @@ def build_well_workbook(
             time_part or "-",
             u.get("farmer_name") or "-",
             u.get("water_year_desc") or "-",
+            format_hours_to_human_fa(duration_val),
             duration_val,
             start_status,
             end_status,
@@ -537,14 +581,18 @@ def build_well_workbook(
             if is_even:
                 c.fill = zebra_fill
 
-            if col_idx in (1, 2, 3, 5, 7, 8, 10, 11):
+            if col_idx in (1, 2, 3, 5, 8, 9, 11, 12):
                 c.alignment = Alignment(horizontal="center", vertical="center")
-            elif col_idx in (4, 9):
+            elif col_idx in (4, 10):
                 c.alignment = Alignment(horizontal="right", vertical="center")
             elif col_idx == 6:
+                # Human readable duration (bold)
+                c.alignment = Alignment(horizontal="center", vertical="center")
+                c.font = font_bold
+            elif col_idx == 7:
+                # Decimal hours (numeric for sum formulas)
                 c.alignment = Alignment(horizontal="center", vertical="center")
                 c.number_format = "#,##0.00"
-                c.font = font_bold
 
     style_worksheet(ws_usages)
 

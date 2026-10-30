@@ -14,6 +14,7 @@ import openpyxl
 
 from export_wells_excel import (
     export_wells,
+    format_hours_to_human_fa,
     format_iso_to_jalali,
     gregorian_to_jalali,
     sanitize_filename,
@@ -21,6 +22,17 @@ from export_wells_excel import (
 
 
 class TestExportWellsExcel(unittest.TestCase):
+    def test_format_hours_to_human_fa(self):
+        self.assertEqual(format_hours_to_human_fa(3.33), "۳ ساعت و ۲۰ دقیقه")
+        self.assertEqual(format_hours_to_human_fa(3.33333), "۳ ساعت و ۲۰ دقیقه")
+        self.assertEqual(format_hours_to_human_fa(3.25), "۳ ساعت و ۱۵ دقیقه")
+        self.assertEqual(format_hours_to_human_fa(3.5), "۳ ساعت و ۳۰ دقیقه")
+        self.assertEqual(format_hours_to_human_fa(0.75), "۴۵ دقیقه")
+        self.assertEqual(format_hours_to_human_fa(4.0), "۴ ساعت")
+        self.assertEqual(format_hours_to_human_fa(0), "۰ ساعت")
+        self.assertEqual(format_hours_to_human_fa("-"), "-")
+        self.assertEqual(format_hours_to_human_fa(None), "-")
+
     def test_jalali_conversion(self):
         # 2024-03-20 -> 1403/01/01
         self.assertEqual(gregorian_to_jalali(2024, 3, 20), (1403, 1, 1))
@@ -138,29 +150,37 @@ COPY "public"."water_usages" ("id", "allocation_id", "consumed_hours", "used_at"
             rows = list(ws_farmers.iter_rows(values_only=True))
             # Header check
             self.assertIn("نام کشاورز", rows[0])
-            self.assertIn("سهمیه باقیمانده (ساعت)", rows[0])
+            self.assertIn("باقیمانده (ساعت)", rows[0])
+            self.assertIn("باقیمانده (ساعت و دقیقه)", rows[0])
 
             # Farmer 1: Haj Reza, allocated 20.0, consumed 6.5, remaining 13.5
             haj_reza = next(r for r in rows[1:] if "حاج رضا" in str(r[1]))
             self.assertEqual(haj_reza[4], 20.0)  # allocated
             self.assertEqual(haj_reza[5], 6.5)   # consumed
             self.assertEqual(haj_reza[6], 13.5)  # remaining
+            self.assertEqual(haj_reza[7], "۱۳ ساعت و ۳۰ دقیقه")  # human-readable remaining
 
             # Check Sheet 3 (آبیاری‌ها) for Well 1
             ws_usages = wb1["آبیاری‌ها"]
             u_rows = list(ws_usages.iter_rows(values_only=True))
+            self.assertIn("مدت زمان مصرف (ساعت و دقیقه)", u_rows[0])
+            self.assertIn("مدت مصرف (ساعت اعشاری)", u_rows[0])
             self.assertIn("وضعیت شروع نوبت", u_rows[0])
             self.assertIn("وضعیت پایان نوبت", u_rows[0])
 
             # Usage 1 had turned_on_pump=t and delivered_to wf2 (حسین حسینی)
             row_u1 = next(r for r in u_rows[1:] if r[3] == "حاج رضا اکبری")
-            self.assertEqual(row_u1[6], "روشن کردن چاه")
-            self.assertEqual(row_u1[7], "تحویل به: حسین حسینی")
+            self.assertEqual(row_u1[5], "۶ ساعت و ۳۰ دقیقه")
+            self.assertEqual(row_u1[6], 6.5)
+            self.assertEqual(row_u1[7], "روشن کردن چاه")
+            self.assertEqual(row_u1[8], "تحویل به: حسین حسینی")
 
             # Usage 2 had received_from wf1 (حاج رضا) and turned_off_pump=t
             row_u2 = next(r for r in u_rows[1:] if r[3] == "حسین حسینی")
-            self.assertEqual(row_u2[6], "تحویل از: حاج رضا اکبری")
-            self.assertEqual(row_u2[7], "خاموش کردن چاه")
+            self.assertEqual(row_u2[5], "۴ ساعت")
+            self.assertEqual(row_u2[6], 4.0)
+            self.assertEqual(row_u2[7], "تحویل از: حاج رضا اکبری")
+            self.assertEqual(row_u2[8], "خاموش کردن چاه")
 
     def test_export_wells_from_tar_archive(self):
         with tempfile.TemporaryDirectory() as tmpdir:
