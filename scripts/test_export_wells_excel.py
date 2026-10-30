@@ -16,8 +16,11 @@ from export_wells_excel import (
     export_wells,
     format_hours_to_human_fa,
     format_iso_to_jalali,
+    format_persian_phone,
     gregorian_to_jalali,
+    normalize_persian_text,
     sanitize_filename,
+    to_persian_digits,
 )
 
 
@@ -39,9 +42,18 @@ class TestExportWellsExcel(unittest.TestCase):
         # 2026-10-30 -> 1405/08/08
         self.assertEqual(gregorian_to_jalali(2026, 10, 30), (1405, 8, 8))
 
-        self.assertEqual(format_iso_to_jalali("2024-03-20"), "1403/01/01")
-        self.assertEqual(format_iso_to_jalali("2024-03-20 14:30:00", include_time=True), "1403/01/01 14:30")
+        self.assertEqual(format_iso_to_jalali("2024-03-20"), "۱۴۰۳/۰۱/۰۱")
+        self.assertEqual(format_iso_to_jalali("2024-03-20 14:30:00", include_time=True), "۱۴۰۳/۰۱/۰۱ ساعت ۱۴:۳۰")
         self.assertEqual(format_iso_to_jalali(None), "-")
+
+    def test_normalize_persian_text(self):
+        self.assertEqual(normalize_persian_text("علي كریمی"), "علی کریمی")
+        self.assertEqual(normalize_persian_text("  چاه   شماره  ۱  "), "چاه شماره ۱")
+
+    def test_format_persian_phone(self):
+        self.assertEqual(format_persian_phone("09152404098"), "۰۹۱۵-۲۴۰-۴۰۹۸")
+        self.assertEqual(format_persian_phone("+989905913852"), "۰۹۹۰-۵۹۱-۳۸۵۲")
+        self.assertEqual(format_persian_phone(None), "-")
 
     def test_sanitize_filename(self):
         self.assertEqual(sanitize_filename("چاه شماره ۱"), "چاه شماره ۱")
@@ -153,8 +165,12 @@ COPY "public"."water_usages" ("id", "allocation_id", "consumed_hours", "used_at"
             self.assertIn("باقیمانده (ساعت)", rows[0])
             self.assertIn("باقیمانده (ساعت و دقیقه)", rows[0])
 
+            # Verify readingOrder=2
+            self.assertEqual(ws.cell(row=1, column=1).alignment.readingOrder, 2)
+
             # Farmer 1: Haj Reza, allocated 20.0, consumed 6.5, remaining 13.5
             haj_reza = next(r for r in rows[1:] if "حاج رضا" in str(r[1]))
+            self.assertEqual(haj_reza[2], "۰۹۱۵-۲۴۰-۴۰۹۸")  # formatted Persian phone
             self.assertEqual(haj_reza[4], 20.0)  # allocated
             self.assertEqual(haj_reza[5], 6.5)   # consumed
             self.assertEqual(haj_reza[6], 13.5)  # remaining

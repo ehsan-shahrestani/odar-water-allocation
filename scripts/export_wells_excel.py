@@ -77,8 +77,34 @@ def gregorian_to_jalali(gy: int, gm: int, gd: int) -> tuple[int, int, int]:
     return jy, jm, jd
 
 
+def normalize_persian_text(val: str | None) -> str:
+    """Normalize Arabic letters to Persian (ی, ک), fix spaces and punctuation."""
+    if not val:
+        return ""
+    text = str(val).strip()
+    text = text.replace("ي", "ی").replace("ى", "ی")
+    text = text.replace("ك", "ک")
+    text = text.replace("ة", "ه")
+    text = text.replace("ۀ", "ه")
+    text = re.sub(r"[ \t]+", " ", text)
+    return text
+
+
+def format_persian_phone(phone: str | None) -> str:
+    """Format mobile number cleanly for Persian display (e.g. ۰۹۱۵-۲۴۰-۴۰۹۸)."""
+    if not phone:
+        return "-"
+    digits = "".join(c for c in str(phone) if c.isdigit())
+    if digits.startswith("98") and len(digits) == 12:
+        digits = "0" + digits[2:]
+    if len(digits) == 11 and digits.startswith("09"):
+        formatted = f"{digits[:4]}-{digits[4:7]}-{digits[7:]}"
+        return to_persian_digits(formatted)
+    return to_persian_digits(phone)
+
+
 def format_iso_to_jalali(iso_str: str | None, include_time: bool = False) -> str:
-    """Format an ISO / Postgres date string into a Jalali date string."""
+    """Format an ISO / Postgres date string into a Jalali date string with Persian digits."""
     if not iso_str:
         return "-"
     clean = iso_str.strip().replace("T", " ")
@@ -91,13 +117,13 @@ def format_iso_to_jalali(iso_str: str | None, include_time: bool = False) -> str
         parts = [int(p) for p in date_part.split("-")]
         if len(parts) == 3:
             jy, jm, jd = gregorian_to_jalali(parts[0], parts[1], parts[2])
-            res = f"{jy:04d}/{jm:02d}/{jd:02d}"
+            res = f"{to_persian_digits(f'{jy:04d}')}/{to_persian_digits(f'{jm:02d}')}/{to_persian_digits(f'{jd:02d}')}"
             if include_time and time_part:
-                return f"{res} {time_part}"
+                return f"{res} ساعت {to_persian_digits(time_part)}"
             return res
     except (ValueError, IndexError):
         pass
-    return iso_str
+    return to_persian_digits(iso_str)
 
 
 def sanitize_filename(name: str) -> str:
@@ -222,18 +248,21 @@ def read_data_sql(source_path: Path) -> str:
 # Excel Workbook Generator
 # ---------------------------------------------------------------------------
 
-# Color palette: Dark Slate / Navy Blue header, soft zebra striping
-HEADER_BG = "1E293B"       # Deep Slate Blue
+# Color palette: Deep Teal (Persian Water) & soft cool slate zebra
+HEADER_BG = "0F766E"       # Deep Teal
 HEADER_TEXT = "FFFFFF"     # White
-ZEBRA_BG = "F8FAFC"        # Very light cool gray
-BORDER_COLOR = "CBD5E1"    # Light slate border
-FONT_FAMILY = "Vazirmatn"  # Modern Persian font (Excel will fall back to Tahoma/Arial if absent)
+ZEBRA_BG = "F8FAFC"        # Very light cool slate
+BORDER_COLOR = "CBD5E1"    # Clean slate border
+FONT_FAMILY = "Tahoma"     # Gold standard font for Persian Excel support across all OS
+STATUS_ACTIVE = "15803D"   # Forest Green
+STATUS_EXHAUSTED = "DC2626"# Red
+STATUS_NONE = "64748B"     # Slate Gray
 
 
 def create_header_style() -> tuple[Font, PatternFill, Alignment, Border]:
-    font = Font(name=FONT_FAMILY, size=11, bold=True, color=HEADER_TEXT)
+    font = Font(name=FONT_FAMILY, size=10, bold=True, color=HEADER_TEXT)
     fill = PatternFill(start_color=HEADER_BG, end_color=HEADER_BG, fill_type="solid")
-    alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    alignment = Alignment(horizontal="center", vertical="center", wrap_text=True, readingOrder=2)
     border = Border(
         left=Side(style="thin", color=BORDER_COLOR),
         right=Side(style="thin", color=BORDER_COLOR),
@@ -249,7 +278,7 @@ def create_data_border() -> Border:
 
 
 def style_worksheet(ws: openpyxl.worksheet.worksheet.Worksheet) -> None:
-    """Apply RTL layout, freeze panes, autofilter, and auto column widths."""
+    """Apply RTL layout, reading order, freeze panes, autofilter, and auto column widths."""
     # 1. Right-To-Left
     ws.views.sheetView[0].rightToLeft = True
 
@@ -262,18 +291,19 @@ def style_worksheet(ws: openpyxl.worksheet.worksheet.Worksheet) -> None:
 
     # 4. Set Header Row Height & Data Rows
     ws.row_dimensions[1].height = 32
+    for r in range(2, ws.max_row + 1):
+        ws.row_dimensions[r].height = 24
 
-    # 5. Auto adjust column widths with padding
+    # 5. Auto adjust column widths with generous Persian character padding
     for col in ws.columns:
         max_len = 0
         col_letter = get_column_letter(col[0].column)
         for cell in col:
             val_str = str(cell.value or "")
-            # Approximate Persian character width
-            char_len = sum(1.4 if ord(c) > 128 else 1.0 for c in val_str)
+            char_len = sum(1.5 if ord(c) > 128 else 1.0 for c in val_str)
             if char_len > max_len:
                 max_len = int(char_len)
-        ws.column_dimensions[col_letter].width = max(max_len + 5, 14)
+        ws.column_dimensions[col_letter].width = max(max_len + 6, 16)
 
 
 def build_well_workbook(
@@ -335,7 +365,7 @@ def build_well_workbook(
 
         row_data = [
             idx,
-            wy.get("description") or "-",
+            normalize_persian_text(wy.get("description") or "-"),
             format_iso_to_jalali(wy.get("start_date")),
             format_iso_to_jalali(wy.get("end_date")),
             h_val,
@@ -352,9 +382,14 @@ def build_well_workbook(
             c = ws_wy.cell(row=row_num, column=col_idx)
             c.font = font_regular
             c.border = data_border
-            c.alignment = Alignment(horizontal="center", vertical="center")
             if is_even:
                 c.fill = zebra_fill
+
+            if col_idx == 2:
+                c.alignment = Alignment(horizontal="right", vertical="center", readingOrder=2)
+            else:
+                c.alignment = Alignment(horizontal="center", vertical="center", readingOrder=2)
+
             if col_idx == 5 and isinstance(h_val, float):
                 c.number_format = "#,##0.00"
             elif col_idx == 6:
@@ -399,8 +434,9 @@ def build_well_workbook(
         farmer_id = wf.get("farmer_id") or ""
         profile = profiles_by_id.get(farmer_id, {})
 
-        farmer_name = (wf.get("display_name") or "").strip() or (profile.get("full_name") or "کشاورز").strip()
-        farmer_phone = (profile.get("phone") or "-").strip()
+        raw_display = (wf.get("display_name") or "").strip() or (profile.get("full_name") or "کشاورز").strip()
+        farmer_name = normalize_persian_text(raw_display)
+        farmer_phone = format_persian_phone(profile.get("phone"))
         created_at_fa = format_iso_to_jalali(wf.get("created_at"))
 
         allocations = allocations_by_well_farmer.get(wf_id, [])
@@ -421,7 +457,8 @@ def build_well_workbook(
         else:
             for alloc in allocations:
                 wy_id = alloc.get("water_year_id")
-                wy_desc = wy_map.get(wy_id, {}).get("description") or "سال آبی نامشخص"
+                raw_wy_desc = wy_map.get(wy_id, {}).get("description") or "سال آبی نامشخص"
+                wy_desc = normalize_persian_text(raw_wy_desc)
                 alloc_h = float(alloc.get("allocated_hours") or 0.0)
 
                 # Sum consumed hours for this allocation
@@ -430,9 +467,9 @@ def build_well_workbook(
                 rem_h = round(alloc_h - consumed_h, 4)
 
                 if alloc_h > 0:
-                    pct = f"{round((consumed_h / alloc_h) * 100, 1)}%"
+                    pct = f"{to_persian_digits(round((consumed_h / alloc_h) * 100, 1))}٪"
                 else:
-                    pct = "0%"
+                    pct = "۰٪"
 
                 if alloc_h == 0:
                     status = "بدون سهمیه"
@@ -481,20 +518,27 @@ def build_well_workbook(
             if is_even:
                 c.fill = zebra_fill
 
-            if col_idx in (1, 3, 4, 9, 10, 11):
-                c.alignment = Alignment(horizontal="center", vertical="center")
-            elif col_idx == 2:
-                c.alignment = Alignment(horizontal="right", vertical="center")
-            elif col_idx in (5, 6, 7):
-                c.alignment = Alignment(horizontal="center", vertical="center")
+            if col_idx == 2:
+                c.alignment = Alignment(horizontal="right", vertical="center", readingOrder=2)
+            else:
+                c.alignment = Alignment(horizontal="center", vertical="center", readingOrder=2)
+
+            if col_idx in (5, 6, 7):
                 c.number_format = "#,##0.00"
             elif col_idx == 8:
-                c.alignment = Alignment(horizontal="center", vertical="center")
                 # Highlight remaining quota if exhausted
                 if f_row["remaining"] <= 0 and f_row["allocated"] > 0:
-                    c.font = Font(name=FONT_FAMILY, size=10, bold=True, color="DC2626")  # Red
+                    c.font = Font(name=FONT_FAMILY, size=9.5, bold=True, color=STATUS_EXHAUSTED)
                 else:
                     c.font = font_bold
+            elif col_idx == 10:
+                # Status font color
+                if f_row["status"] == "دارای اعتبار":
+                    c.font = Font(name=FONT_FAMILY, size=9.5, bold=True, color=STATUS_ACTIVE)
+                elif f_row["status"] == "اتمام سهمیه":
+                    c.font = Font(name=FONT_FAMILY, size=9.5, bold=True, color=STATUS_EXHAUSTED)
+                else:
+                    c.font = Font(name=FONT_FAMILY, size=9.5, color=STATUS_NONE)
 
     style_worksheet(ws_farmers)
 
@@ -545,7 +589,7 @@ def build_well_workbook(
         if u.get("turned_on_pump") in ("t", "true", True):
             start_status = "روشن کردن چاه"
         elif u.get("received_from_name"):
-            start_status = f"تحویل از: {u['received_from_name']}"
+            start_status = f"تحویل از: {normalize_persian_text(u['received_from_name'])}"
         else:
             start_status = "-"
 
@@ -553,22 +597,22 @@ def build_well_workbook(
         if u.get("turned_off_pump") in ("t", "true", True):
             end_status = "خاموش کردن چاه"
         elif u.get("delivered_to_name"):
-            end_status = f"تحویل به: {u['delivered_to_name']}"
+            end_status = f"تحویل به: {normalize_persian_text(u['delivered_to_name'])}"
         else:
             end_status = "-"
 
         u_row = [
             idx,
             date_fa,
-            time_part or "-",
-            u.get("farmer_name") or "-",
-            u.get("water_year_desc") or "-",
+            to_persian_digits(time_part) if time_part else "-",
+            normalize_persian_text(u.get("farmer_name") or "-"),
+            normalize_persian_text(u.get("water_year_desc") or "-"),
             format_hours_to_human_fa(duration_val),
             duration_val,
             start_status,
             end_status,
-            u.get("description") or "-",
-            u.get("recorder_name") or "-",
+            normalize_persian_text(u.get("description") or "-"),
+            normalize_persian_text(u.get("recorder_name") or "-"),
             used_at or "-",
         ]
         ws_usages.append(u_row)
@@ -581,17 +625,17 @@ def build_well_workbook(
             if is_even:
                 c.fill = zebra_fill
 
-            if col_idx in (1, 2, 3, 5, 8, 9, 11, 12):
-                c.alignment = Alignment(horizontal="center", vertical="center")
-            elif col_idx in (4, 10):
-                c.alignment = Alignment(horizontal="right", vertical="center")
-            elif col_idx == 6:
+            if col_idx in (4, 10):
+                # Right aligned text (Farmer name, description)
+                c.alignment = Alignment(horizontal="right", vertical="center", readingOrder=2)
+            else:
+                c.alignment = Alignment(horizontal="center", vertical="center", readingOrder=2)
+
+            if col_idx == 6:
                 # Human readable duration (bold)
-                c.alignment = Alignment(horizontal="center", vertical="center")
                 c.font = font_bold
             elif col_idx == 7:
                 # Decimal hours (numeric for sum formulas)
-                c.alignment = Alignment(horizontal="center", vertical="center")
                 c.number_format = "#,##0.00"
 
     style_worksheet(ws_usages)
@@ -639,7 +683,7 @@ def export_wells(source_path: Path, output_dir: Path) -> list[Path]:
         if not name:
             p = profiles_by_id.get(wf.get("farmer_id") or "")
             name = (p.get("full_name") or "").strip() if p else ""
-        return name or "کشاورز"
+        return normalize_persian_text(name or "کشاورز")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     exported_files: list[Path] = []
@@ -649,7 +693,7 @@ def export_wells(source_path: Path, output_dir: Path) -> list[Path]:
         if not well_id:
             continue
 
-        raw_well_name = (well.get("name") or "چاه_بدون_نام").strip()
+        raw_well_name = normalize_persian_text(well.get("name") or "چاه_بدون_نام")
         safe_name = sanitize_filename(raw_well_name)
 
         # Well-specific entities
@@ -686,7 +730,7 @@ def export_wells(source_path: Path, output_dir: Path) -> list[Path]:
                 farmer_name = get_farmer_display(wf_id)
 
                 recorder = profiles_by_id.get(u.get("created_by") or "")
-                recorder_name = recorder.get("full_name") if recorder else "-"
+                recorder_name = normalize_persian_text(recorder.get("full_name") if recorder else "-")
 
                 all_well_usages.append({
                     "id": u.get("id"),
