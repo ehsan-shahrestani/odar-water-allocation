@@ -26,13 +26,13 @@ from export_wells_excel import (
 
 class TestExportWellsExcel(unittest.TestCase):
     def test_format_hours_to_human_fa(self):
-        self.assertEqual(format_hours_to_human_fa(3.33), "۳ ساعت و ۲۰ دقیقه")
-        self.assertEqual(format_hours_to_human_fa(3.33333), "۳ ساعت و ۲۰ دقیقه")
-        self.assertEqual(format_hours_to_human_fa(3.25), "۳ ساعت و ۱۵ دقیقه")
-        self.assertEqual(format_hours_to_human_fa(3.5), "۳ ساعت و ۳۰ دقیقه")
-        self.assertEqual(format_hours_to_human_fa(0.75), "۴۵ دقیقه")
-        self.assertEqual(format_hours_to_human_fa(4.0), "۴ ساعت")
-        self.assertEqual(format_hours_to_human_fa(0), "۰ ساعت")
+        self.assertEqual(format_hours_to_human_fa(3.33), "\u200f۳ ساعت و ۲۰ دقیقه")
+        self.assertEqual(format_hours_to_human_fa(3.33333), "\u200f۳ ساعت و ۲۰ دقیقه")
+        self.assertEqual(format_hours_to_human_fa(3.25), "\u200f۳ ساعت و ۱۵ دقیقه")
+        self.assertEqual(format_hours_to_human_fa(3.5), "\u200f۳ ساعت و ۳۰ دقیقه")
+        self.assertEqual(format_hours_to_human_fa(0.75), "\u200f۴۵ دقیقه")
+        self.assertEqual(format_hours_to_human_fa(4.0), "\u200f۴ ساعت")
+        self.assertEqual(format_hours_to_human_fa(0), "\u200f۰ ساعت")
         self.assertEqual(format_hours_to_human_fa("-"), "-")
         self.assertEqual(format_hours_to_human_fa(None), "-")
 
@@ -42,8 +42,8 @@ class TestExportWellsExcel(unittest.TestCase):
         # 2026-10-30 -> 1405/08/08
         self.assertEqual(gregorian_to_jalali(2026, 10, 30), (1405, 8, 8))
 
-        self.assertEqual(format_iso_to_jalali("2024-03-20"), "۱۴۰۳/۰۱/۰۱")
-        self.assertEqual(format_iso_to_jalali("2024-03-20 14:30:00", include_time=True), "۱۴۰۳/۰۱/۰۱ ساعت ۱۴:۳۰")
+        self.assertEqual(format_iso_to_jalali("2024-03-20"), "\u200f۱۴۰۳/۰۱/۰۱")
+        self.assertEqual(format_iso_to_jalali("2024-03-20 14:30:00", include_time=True), "\u200f۱۴۰۳/۰۱/۰۱ ساعت ۱۴:۳۰")
         self.assertEqual(format_iso_to_jalali(None), "-")
 
     def test_normalize_persian_text(self):
@@ -51,8 +51,8 @@ class TestExportWellsExcel(unittest.TestCase):
         self.assertEqual(normalize_persian_text("  چاه   شماره  ۱  "), "چاه شماره ۱")
 
     def test_format_persian_phone(self):
-        self.assertEqual(format_persian_phone("09152404098"), "۰۹۱۵-۲۴۰-۴۰۹۸")
-        self.assertEqual(format_persian_phone("+989905913852"), "۰۹۹۰-۵۹۱-۳۸۵۲")
+        self.assertEqual(format_persian_phone("09152404098"), "\u200f۰۹۱۵-۲۴۰-۴۰۹۸")
+        self.assertEqual(format_persian_phone("+989905913852"), "\u200f۰۹۹۰-۵۹۱-۳۸۵۲")
         self.assertEqual(format_persian_phone(None), "-")
 
     def test_sanitize_filename(self):
@@ -170,11 +170,11 @@ COPY "public"."water_usages" ("id", "allocation_id", "consumed_hours", "used_at"
 
             # Farmer 1: Haj Reza, allocated 20.0, consumed 6.5, remaining 13.5
             haj_reza = next(r for r in rows[1:] if "حاج رضا" in str(r[1]))
-            self.assertEqual(haj_reza[2], "۰۹۱۵-۲۴۰-۴۰۹۸")  # formatted Persian phone
+            self.assertEqual(haj_reza[2], "\u200f۰۹۱۵-۲۴۰-۴۰۹۸")  # formatted Persian phone
             self.assertEqual(haj_reza[4], 20.0)  # allocated
             self.assertEqual(haj_reza[5], 6.5)   # consumed
             self.assertEqual(haj_reza[6], 13.5)  # remaining
-            self.assertEqual(haj_reza[7], "۱۳ ساعت و ۳۰ دقیقه")  # human-readable remaining
+            self.assertEqual(haj_reza[7], "\u200f۱۳ ساعت و ۳۰ دقیقه")  # human-readable remaining
 
             # Check Sheet 3 (آبیاری‌ها) for Well 1
             ws_usages = wb1["آبیاری‌ها"]
@@ -186,14 +186,14 @@ COPY "public"."water_usages" ("id", "allocation_id", "consumed_hours", "used_at"
 
             # Usage 1 had turned_on_pump=t and delivered_to wf2 (حسین حسینی)
             row_u1 = next(r for r in u_rows[1:] if r[3] == "حاج رضا اکبری")
-            self.assertEqual(row_u1[5], "۶ ساعت و ۳۰ دقیقه")
+            self.assertEqual(row_u1[5], "\u200f۶ ساعت و ۳۰ دقیقه")
             self.assertEqual(row_u1[6], 6.5)
             self.assertEqual(row_u1[7], "روشن کردن چاه")
             self.assertEqual(row_u1[8], "تحویل به: حسین حسینی")
 
             # Usage 2 had received_from wf1 (حاج رضا) and turned_off_pump=t
             row_u2 = next(r for r in u_rows[1:] if r[3] == "حسین حسینی")
-            self.assertEqual(row_u2[5], "۴ ساعت")
+            self.assertEqual(row_u2[5], "\u200f۴ ساعت")
             self.assertEqual(row_u2[6], 4.0)
             self.assertEqual(row_u2[7], "تحویل از: حاج رضا اکبری")
             self.assertEqual(row_u2[8], "خاموش کردن چاه")

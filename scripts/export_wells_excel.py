@@ -99,8 +99,8 @@ def format_persian_phone(phone: str | None) -> str:
         digits = "0" + digits[2:]
     if len(digits) == 11 and digits.startswith("09"):
         formatted = f"{digits[:4]}-{digits[4:7]}-{digits[7:]}"
-        return to_persian_digits(formatted)
-    return to_persian_digits(phone)
+        return f"\u200f{to_persian_digits(formatted)}"
+    return f"\u200f{to_persian_digits(phone)}"
 
 
 def format_iso_to_jalali(iso_str: str | None, include_time: bool = False) -> str:
@@ -117,13 +117,13 @@ def format_iso_to_jalali(iso_str: str | None, include_time: bool = False) -> str
         parts = [int(p) for p in date_part.split("-")]
         if len(parts) == 3:
             jy, jm, jd = gregorian_to_jalali(parts[0], parts[1], parts[2])
-            res = f"{to_persian_digits(f'{jy:04d}')}/{to_persian_digits(f'{jm:02d}')}/{to_persian_digits(f'{jd:02d}')}"
+            res = f"\u200f{to_persian_digits(f'{jy:04d}')}/{to_persian_digits(f'{jm:02d}')}/{to_persian_digits(f'{jd:02d}')}"
             if include_time and time_part:
                 return f"{res} ساعت {to_persian_digits(time_part)}"
             return res
     except (ValueError, IndexError):
         pass
-    return to_persian_digits(iso_str)
+    return f"\u200f{to_persian_digits(iso_str)}"
 
 
 def sanitize_filename(name: str) -> str:
@@ -146,9 +146,6 @@ def format_hours_to_human_fa(hours_val: float | int | str | None) -> str:
     except (ValueError, TypeError):
         return str(hours_val)
 
-    if abs(val) < 0.0001:
-        return "۰ ساعت"
-
     is_negative = val < 0
     abs_val = abs(val)
     total_minutes = int(round(abs_val * 60))
@@ -158,9 +155,9 @@ def format_hours_to_human_fa(hours_val: float | int | str | None) -> str:
     h_fa = to_persian_digits(h)
     m_fa = to_persian_digits(m)
 
-    prefix = "منفی " if is_negative else ""
+    prefix = "\u200fمنفی " if is_negative else "\u200f"
     if h == 0 and m == 0:
-        return "۰ ساعت"
+        return f"{prefix}۰ ساعت"
     if m == 0:
         return f"{prefix}{h_fa} ساعت"
     if h == 0:
@@ -467,9 +464,9 @@ def build_well_workbook(
                 rem_h = round(alloc_h - consumed_h, 4)
 
                 if alloc_h > 0:
-                    pct = f"{to_persian_digits(round((consumed_h / alloc_h) * 100, 1))}٪"
+                    pct = f"\u200f{to_persian_digits(round((consumed_h / alloc_h) * 100, 1))}٪"
                 else:
-                    pct = "۰٪"
+                    pct = "\u200f۰٪"
 
                 if alloc_h == 0:
                     status = "بدون سهمیه"
