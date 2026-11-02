@@ -144,7 +144,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
                         type="button"
                         class="btn-table-action"
                         [class.text-rose-600]="user.is_active"
-                        [class.text-emerald-700]="!user.is_active"
+                        [class.text-primary]="!user.is_active"
                         (click)="toggleUserActive(user)"
                       >
                         {{ user.is_active ? 'غیرفعال‌سازی' : 'فعال‌سازی' }}
@@ -183,7 +183,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
                       type="button"
                       class="btn-table-action"
                       [class.text-rose-600]="user.is_active"
-                      [class.text-emerald-700]="!user.is_active"
+                      [class.text-primary]="!user.is_active"
                       (click)="toggleUserActive(user)"
                     >
                       {{ user.is_active ? 'غیرفعال‌سازی' : 'فعال‌سازی' }}
@@ -255,7 +255,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
                 <input
                   id="form-active"
                   type="checkbox"
-                  class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                  class="w-4 h-4 text-primary rounded focus:ring-primary"
                   [ngModel]="formIsActive()"
                   (ngModelChange)="formIsActive.set($event)"
                   name="formIsActive"
@@ -295,13 +295,13 @@ import { UserProfile, UserRole } from '@core/auth.model';
     .section-title {
       font-size: 1.5rem;
       font-weight: 800;
-      color: #063722;
+      color: var(--forest-950);
       margin: 0;
     }
 
     .section-desc {
       font-size: 0.875rem;
-      color: #567064;
+      color: var(--ink-muted);
       margin-top: 0.25rem;
     }
 
@@ -309,20 +309,20 @@ import { UserProfile, UserRole } from '@core/auth.model';
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      background: #08633f;
-      color: #ffffff;
+      background: var(--forest-700);
+      color: var(--on-brand);
       padding: 0.65rem 1.25rem;
       border-radius: 0.75rem;
       font-weight: 600;
       font-size: 0.9rem;
       border: none;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(8, 99, 63, 0.25);
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--forest-700) 25%, transparent);
       transition: all 0.18s ease;
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: #07482d;
+      background: var(--forest-900);
       transform: translateY(-1px);
     }
 
@@ -335,7 +335,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
       display: inline-flex;
       align-items: center;
       background: #e2ece5;
-      color: #173b2b;
+      color: var(--ink);
       padding: 0.65rem 1.25rem;
       border-radius: 0.75rem;
       font-weight: 600;
@@ -345,12 +345,12 @@ import { UserProfile, UserRole } from '@core/auth.model';
     }
 
     .btn-secondary:hover {
-      background: #d4e3d8;
+      background: var(--line-strong);
     }
 
     /* Filters Card */
     .filter-card {
-      background: #ffffff;
+      background: var(--surface);
       border: 1px solid #dce8e0;
       border-radius: 1rem;
       padding: 1rem 1.25rem;
@@ -359,7 +359,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 1rem;
-      box-shadow: 0 2px 8px rgba(7, 72, 45, 0.04);
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--forest-900) 4%, transparent);
     }
 
     .search-input-wrap {
@@ -382,17 +382,17 @@ import { UserProfile, UserRole } from '@core/auth.model';
       width: 100%;
       padding: 0.65rem 2.5rem 0.65rem 1rem;
       border-radius: 0.65rem;
-      border: 1px solid #d4e3d8;
+      border: 1px solid var(--line-strong);
       background: #f9fbf9;
       font-size: 0.88rem;
-      color: #173b2b;
+      color: var(--ink);
       outline: none;
       transition: border-color 0.15s ease;
     }
 
     .search-input:focus {
-      border-color: #08633f;
-      background: #ffffff;
+      border-color: var(--forest-700);
+      background: var(--surface);
     }
 
     .filter-group {
@@ -416,34 +416,34 @@ import { UserProfile, UserRole } from '@core/auth.model';
       border-radius: 0.5rem;
       font-size: 0.82rem;
       font-weight: 600;
-      color: #567064;
+      color: var(--ink-muted);
       cursor: pointer;
       transition: all 0.15s ease;
     }
 
     .role-tab.active {
-      background: #ffffff;
-      color: #08633f;
+      background: var(--surface);
+      color: var(--forest-700);
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
     }
 
     .status-select {
       padding: 0.5rem 0.85rem;
       border-radius: 0.6rem;
-      border: 1px solid #d4e3d8;
-      background: #ffffff;
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
       font-size: 0.84rem;
-      color: #173b2b;
+      color: var(--ink);
       outline: none;
     }
 
     /* Table */
     .table-container {
-      background: #ffffff;
+      background: var(--surface);
       border: 1px solid #dce8e0;
       border-radius: 1rem;
       overflow: hidden;
-      box-shadow: 0 4px 16px rgba(7, 72, 45, 0.04);
+      box-shadow: 0 4px 16px color-mix(in srgb, var(--forest-900) 4%, transparent);
     }
 
     .desktop-table {
@@ -463,8 +463,8 @@ import { UserProfile, UserRole } from '@core/auth.model';
       padding: 1rem 1.25rem;
       font-size: 0.82rem;
       font-weight: 700;
-      color: #567064;
-      border-bottom: 1px solid #e5ede7;
+      color: var(--ink-muted);
+      border-bottom: 1px solid var(--line-soft);
     }
 
     .desktop-table td {
@@ -479,7 +479,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
     }
 
     .desktop-table tr:hover td {
-      background: #fbfdfc;
+      background: var(--surface-raised);
     }
 
     .user-cell {
@@ -493,7 +493,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
       height: 36px;
       border-radius: 50%;
       background: #e1f5eb;
-      color: #08633f;
+      color: var(--forest-700);
       font-weight: 700;
       font-size: 0.9rem;
       display: flex;
@@ -508,7 +508,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
 
     .user-cell-name {
       font-weight: 700;
-      color: #173b2b;
+      color: var(--ink);
     }
 
     .user-cell-id {
@@ -577,7 +577,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
       border: none;
       font-size: 0.82rem;
       font-weight: 600;
-      color: #08633f;
+      color: var(--forest-700);
       cursor: pointer;
       padding: 0.2rem 0.4rem;
       border-radius: 0.35rem;
@@ -618,14 +618,14 @@ import { UserProfile, UserRole } from '@core/auth.model';
     .loading-state, .empty-state {
       padding: 3rem 1.5rem;
       text-align: center;
-      color: #567064;
+      color: var(--ink-muted);
     }
 
     .spinner {
       width: 28px;
       height: 28px;
-      border: 3px solid #d4e3d8;
-      border-top-color: #08633f;
+      border: 3px solid var(--line-strong);
+      border-top-color: var(--forest-700);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin: 0 auto 0.75rem;
@@ -662,7 +662,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
     .modal-card {
       position: relative;
       z-index: 2;
-      background: #ffffff;
+      background: var(--surface);
       border-radius: 1.25rem;
       width: 100%;
       max-width: 480px;
@@ -672,7 +672,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
 
     .modal-header {
       padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid #e5ede7;
+      border-bottom: 1px solid var(--line-soft);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -681,7 +681,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
     .modal-title {
       font-size: 1.15rem;
       font-weight: 800;
-      color: #063722;
+      color: var(--forest-950);
       margin: 0;
     }
 
@@ -701,7 +701,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
       display: block;
       font-size: 0.85rem;
       font-weight: 600;
-      color: #173b2b;
+      color: var(--ink);
       margin-bottom: 0.35rem;
     }
 
@@ -709,16 +709,16 @@ import { UserProfile, UserRole } from '@core/auth.model';
       width: 100%;
       padding: 0.65rem 0.85rem;
       border-radius: 0.65rem;
-      border: 1px solid #d4e3d8;
-      background: #ffffff;
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
       font-size: 0.9rem;
-      color: #173b2b;
+      color: var(--ink);
       outline: none;
     }
 
     .form-input:focus, .form-select:focus {
-      border-color: #08633f;
-      box-shadow: 0 0 0 3px rgba(8, 99, 63, 0.1);
+      border-color: var(--forest-700);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--forest-700) 10%, transparent);
     }
 
     .modal-footer {
@@ -728,7 +728,7 @@ import { UserProfile, UserRole } from '@core/auth.model';
       gap: 0.75rem;
       margin-top: 1.5rem;
       padding-top: 1rem;
-      border-top: 1px solid #e5ede7;
+      border-top: 1px solid var(--line-soft);
     }
   `,
 })

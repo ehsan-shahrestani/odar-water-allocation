@@ -1,6 +1,6 @@
 <div class="water-years-page">
   <!-- Page Header -->
-  <div class="page-header">
+  <div class="water-years-header">
     <div class="header-content">
       <h1 class="page-title">
         <span>سال‌های آبی</span>
@@ -130,7 +130,7 @@
 
   <!-- Add Water Year Modal -->
   @if (showModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-wy-title">
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-wy-title" appDialogFocus (dialogClose)="closeModal()">
       <button
         type="button"
         class="modal-overlay"

@@ -78,7 +78,7 @@ import { AdminAuthError, AdminAuthService, normalizeDigits } from '../../core/ad
           class="space-y-5"
           [attr.aria-busy]="auth.isLoading()"
         >
-          <div class="card p-4 text-center space-y-2 mb-3 bg-mint-50">
+          <div class="card p-4 text-center space-y-2 mb-3 bg-brand-subtle">
             <p class="text-sm text-ink-muted">
               کد تایید ۴ رقمی به شماره همراه مدیر
               @if (auth.maskedPhone()) {
@@ -126,7 +126,7 @@ import { AdminAuthError, AdminAuthService, normalizeDigits } from '../../core/ad
             } @else {
               <button
                 type="button"
-                class="text-xs text-forest-700 underline font-semibold bg-transparent border-0 cursor-pointer p-0"
+                class="text-xs text-primary underline font-semibold bg-transparent border-0 cursor-pointer p-0"
                 [disabled]="auth.isLoading()"
                 (click)="resendOtp()"
               >

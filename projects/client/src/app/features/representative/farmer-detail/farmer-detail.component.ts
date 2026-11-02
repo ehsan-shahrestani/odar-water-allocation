@@ -8,8 +8,10 @@ import {
   FarmerWellDetail,
   PortalDataService,
   WaterYearItem,
+  WaterTransferItem,
 } from '../../../core/portal-data.service';
 import { ButtonComponent } from '../../../shared/button/button.component';
+import { DialogFocusDirective } from '../../../shared/dialog-focus/dialog-focus.directive';
 import {
   calculateTotalHours,
   faNumber,
@@ -26,7 +28,7 @@ import {
 
 @Component({
   selector: 'app-farmer-detail',
-  imports: [ButtonComponent, PersianDatepickerComponent, RouterLink],
+  imports: [DialogFocusDirective, ButtonComponent, PersianDatepickerComponent, RouterLink],
   templateUrl: './farmer-detail.component.html',
   styleUrl: './farmer-detail.component.css',
 })
@@ -47,6 +49,89 @@ export class FarmerDetailComponent implements OnInit {
   protected readonly wellId = signal('');
   protected readonly wellName = signal('');
   protected readonly farmerId = signal('');
+
+  protected readonly transfers = signal<WaterTransferItem[]>([]);
+  protected readonly transfersLoading = signal(false);
+  protected readonly transfersError = signal(false);
+  protected readonly showTransfer = signal(false);
+  protected readonly transferTarget = signal('');
+  protected readonly transferDirection = signal('out');
+  protected readonly transferKind = signal('sale');
+  protected readonly transferHours = signal('');
+  protected readonly transferMinutes = signal('');
+  protected readonly transferDescription = signal('');
+
+  private loadTransfers(detail: FarmerWellDetail): void {
+    const yearId = this.selectedWaterYearId();
+    this.transfers.set([]);
+    this.transfersLoading.set(true);
+    this.transfersError.set(false);
+    void this.portalData.getWaterTransfers(yearId, detail.wellFarmerId, this.wellId()).then(items => {
+      if (this.selectedWaterYearId() === yearId) this.transfers.set(items);
+    }).catch(() => {
+      if (this.selectedWaterYearId() === yearId) this.transfersError.set(true);
+    }).finally(() => {
+      if (this.selectedWaterYearId() === yearId) this.transfersLoading.set(false);
+    });
+  }
+
+  protected retryTransfers(): void {
+    const detail = this.farmerDetail();
+    if (detail) this.loadTransfers(detail);
+  }
+
+  private transferTrigger: HTMLElement | null = null;
+
+  protected closeTransfer(): void {
+    if (this.submitting()) return;
+    this.showTransfer.set(false);
+    this.transferTrigger?.focus();
+  }
+
+  protected trapTransferFocus(event: KeyboardEvent): void {
+    if (event.key !== 'Tab') return;
+    const dialog = event.currentTarget as HTMLElement;
+    const controls = Array.from(dialog.querySelectorAll<HTMLElement>('button:not(:disabled), select:not(:disabled), input:not(:disabled)'));
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }
+
+  protected openTransfer(): void {
+    this.transferTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    this.transferTarget.set(''); this.transferDirection.set('out'); this.transferKind.set('sale');
+    this.transferHours.set(''); this.transferMinutes.set(''); this.transferDescription.set('');
+    this.modalError.set(''); this.showTransfer.set(true);
+    setTimeout(() => document.getElementById('transfer-direction')?.focus());
+  }
+
+  protected async submitTransfer(): Promise<void> {
+    const detail = this.farmerDetail();
+    const hours = calculateTotalHours(this.transferHours(), this.transferMinutes());
+    const minutes = normalizeDigits(this.transferMinutes()).trim();
+    const hoursInput = normalizeDigits(this.transferHours()).trim();
+    if (!detail || !this.transferTarget() || hours === null || hours <= 0 || (hoursInput && !/^\d+$/.test(hoursInput)) || (minutes && (!/^\d+$/.test(minutes) || Number(minutes) > 59))) {
+      this.modalError.set('کشاورز و مقدار معتبر را وارد کنید.'); return;
+    }
+    const outgoing = this.transferDirection() === 'out';
+    this.submitting.set(true); this.modalError.set('');
+    try {
+      const sms = await this.portalData.transferWater({ yearId: this.selectedWaterYearId(),
+        from: outgoing ? detail.wellFarmerId : this.transferTarget(),
+        to: outgoing ? this.transferTarget() : detail.wellFarmerId,
+        hours, kind: this.transferKind(), description: this.transferDescription() });
+      this.showTransfer.set(false);
+      this.transferTrigger?.focus();
+      if (sms) toast.success('انتقال ثبت و پیامک‌ها ارسال شدند.');
+      else toast.warning('انتقال ثبت شد؛ ارسال یک یا هر دو پیامک ناموفق بود.');
+      try {
+        const updated = await this.portalData.getFarmerDetailForWell({ farmerId: this.farmerId(), wellId: this.wellId(), waterYearId: this.selectedWaterYearId() });
+        this.farmerDetail.set(updated); this.loadTransfers(updated);
+      } catch { toast.error('انتقال ثبت شد؛ اطلاعات صفحه را دوباره بارگذاری کنید.'); }
+    } catch (err: unknown) { this.modalError.set(err instanceof Error ? err.message : 'خطا در ثبت انتقال'); }
+    finally { this.submitting.set(false); }
+  }
 
   // Modals
   protected readonly showUsageModal = signal(false);
@@ -164,6 +249,7 @@ export class FarmerDetailComponent implements OnInit {
     ).subscribe({
       next: (detail) => {
         this.farmerDetail.set(detail);
+        this.loadTransfers(detail);
         this.loading.set(false);
       },
       error: (err: unknown) => {
@@ -190,6 +276,7 @@ export class FarmerDetailComponent implements OnInit {
     ).subscribe({
       next: (detail) => {
         this.farmerDetail.set(detail);
+        this.loadTransfers(detail);
       },
       error: (err: unknown) => {
         const msg = err instanceof Error ? err.message : 'خطا در بارگذاری اطلاعات';

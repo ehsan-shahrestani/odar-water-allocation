@@ -109,8 +109,7 @@
             </div>
           </div>
           <div class="stat-num-row">
-            <strong class="stat-num">{{ number(totalStats().totalQuota) }}</strong>
-            <span class="stat-unit">ساعت آب</span>
+            <strong class="stat-num stat-duration">{{ hoursDisplay(totalStats().totalQuota) }}</strong>
           </div>
         </div>
 
@@ -128,8 +127,7 @@
             </div>
           </div>
           <div class="stat-num-row text-amber-700">
-            <strong class="stat-num">{{ number(totalStats().totalUsed) }}</strong>
-            <span class="stat-unit">ساعت</span>
+            <strong class="stat-num stat-duration">{{ hoursDisplay(totalStats().totalUsed) }}</strong>
           </div>
         </div>
 
@@ -146,9 +144,8 @@
               </svg>
             </div>
           </div>
-          <div class="stat-num-row text-emerald-800">
-            <strong class="stat-num">{{ number(totalStats().totalRemaining) }}</strong>
-            <span class="stat-unit">ساعت آب</span>
+          <div class="stat-num-row text-brand-strong">
+            <strong class="stat-num stat-duration">{{ hoursDisplay(totalStats().totalRemaining) }}</strong>
           </div>
         </div>
       </div>
@@ -211,7 +208,7 @@
 
   <!-- ==================== MODAL 1: RECORD USAGE ==================== -->
   @if (showUsageModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-usage-title">
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-usage-title" appDialogFocus (dialogClose)="closeUsageModal()">
       <button
         type="button"
         class="modal-overlay"
@@ -242,7 +239,7 @@
             >
               <option value="">-- لطفاً کشاورز را انتخاب کنید --</option>
               @for (farmer of dashboard()?.farmers; track farmer.id) {
-                <option [value]="farmer.id">
+                <option [value]="farmer.id" [selected]="selectedFarmerForUsage() === farmer.id">
                   {{ farmer.name }} (باقی‌مانده: {{ hoursDisplay(farmer.remainingHours) }})
                 </option>
               }
@@ -255,7 +252,7 @@
               @if (selectedFarmerUsageRemaining() !== null) {
                 <span class="text-xs text-stone-600 font-medium">
                   حداکثر مجاز:
-                  <strong class="text-emerald-800"
+                  <strong class="text-brand-strong"
                     >{{ hoursDisplay(selectedFarmerUsageRemaining()!) }}</strong
                   >
                 </span>
@@ -275,7 +272,7 @@
                     [value]="usageMinutesPart()"
                     (input)="usageMinutesPart.set($any($event.target).value)"
                   />
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium pointer-events-none select-none">دقیقه</span>
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-600 font-medium pointer-events-none select-none">دقیقه</span>
                 </div>
               </div>
 
@@ -291,14 +288,14 @@
                     [value]="usageHoursPart()"
                     (input)="usageHoursPart.set($any($event.target).value)"
                   />
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium pointer-events-none select-none">ساعت</span>
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-600 font-medium pointer-events-none select-none">ساعت</span>
                 </div>
               </div>
             </div>
 
             @if (parsedUsagePreview()) {
-              <div class="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200/80 rounded-lg px-3 py-1.5 mt-2 flex items-center gap-1.5">
-                <svg class="w-4 h-4 text-emerald-600 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <div class="text-xs text-brand-strong bg-brand-subtle border border-line-strong rounded-lg px-3 py-1.5 mt-2 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-primary shrink-0" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" />
                 </svg>
                 <span>مجموع کارکرد: <strong>{{ parsedUsagePreview() }}</strong></span>
@@ -392,7 +389,7 @@
 
   <!-- ==================== MODAL 2: ADD FARMER TO WELL ==================== -->
   @if (showAddFarmerModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-add-title">
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-add-title" appDialogFocus (dialogClose)="closeAddFarmerModal()">
       <button
         type="button"
         class="modal-overlay"
@@ -502,7 +499,7 @@
               >
                 <input
                   type="checkbox"
-                  class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  class="rounded border-slate-300 text-primary focus:ring-primary"
                   [formField]="addFarmerForm.includeHoursPerShare"
                 />
                 <span>درج نرخ مالکیت در پیامک سهمیه</span>
@@ -531,7 +528,7 @@
 
   <!-- ==================== MODAL: ADD WATER YEAR ==================== -->
   @if (showAddWaterYearModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-wy-title">
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-wy-title" appDialogFocus (dialogClose)="closeAddWaterYearModal()">
       <button
         type="button"
         class="modal-overlay"
@@ -632,7 +629,7 @@
       class="modal-backdrop"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="modal-edit-well-title"
+      aria-labelledby="modal-edit-well-title" appDialogFocus (dialogClose)="closeEditWellModal()"
     >
       <button
         type="button"

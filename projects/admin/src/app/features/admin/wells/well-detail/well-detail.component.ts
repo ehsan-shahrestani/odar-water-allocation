@@ -24,7 +24,7 @@ import { parseHoursNumber } from '@core/mock-data';
       <div class="flex items-center justify-between gap-3 flex-wrap">
         <a
           routerLink="/admin/wells"
-          class="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-white border border-emerald-200 hover:border-emerald-300 py-2 px-3.5 rounded-xl shadow-2xs transition-all cursor-pointer"
+          class="inline-flex items-center gap-2 text-xs font-bold text-primary hover:text-brand-strong bg-white border border-line-strong hover:border-line-strong py-2 px-3.5 rounded-xl shadow-2xs transition-all cursor-pointer"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
             <polyline points="9 18 15 12 9 6"></polyline>
@@ -36,11 +36,11 @@ import { parseHoursNumber } from '@core/mock-data';
           <div class="flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              class="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 border-emerald-300 hover:border-emerald-400 hover:bg-emerald-50 text-emerald-900 font-semibold"
+              class="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5 border-line-strong hover:border-line-strong hover:bg-brand-subtle text-brand-strong font-semibold"
               (click)="openChangeRepModal(curWell)"
               title="تغییر یا حذف نماینده مسئول این چاه"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-emerald-700">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-primary">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                 <circle cx="9" cy="7" r="4"></circle>
                 <path d="M19 8v6"></path>
@@ -84,7 +84,7 @@ import { parseHoursNumber } from '@core/mock-data';
         <div class="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4">
           <div class="flex items-start justify-between gap-4 flex-wrap">
             <div class="flex items-center gap-4">
-              <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 shadow-xs">
+              <div class="w-12 h-12 rounded-2xl bg-brand-soft text-primary flex items-center justify-center shrink-0 shadow-xs">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6">
                   <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
                   <path d="M12 22a10 10 0 0 0 10-10H2a10 10 0 0 0 10 10z"></path>
@@ -106,7 +106,7 @@ import { parseHoursNumber } from '@core/mock-data';
             <!-- Representative Card with Change/Remove Action -->
             <div class="flex items-center justify-between gap-3 bg-gray-50 border border-gray-200/90 px-3.5 py-2.5 rounded-xl min-w-[240px]">
               <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center border border-emerald-200 shrink-0">
+                <div class="w-9 h-9 rounded-full bg-brand-soft text-primary font-bold text-xs flex items-center justify-center border border-line-strong shrink-0">
                   {{ (curWell.representative_name || 'ن').charAt(0) }}
                 </div>
                 <div>
@@ -123,7 +123,7 @@ import { parseHoursNumber } from '@core/mock-data';
               </div>
               <button
                 type="button"
-                class="text-xs text-emerald-700 hover:text-emerald-950 font-semibold bg-white hover:bg-emerald-50 border border-emerald-200 hover:border-emerald-300 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer"
+                class="text-xs text-primary hover:text-brand-strong font-semibold bg-white hover:bg-brand-subtle border border-line-strong hover:border-line-strong px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer"
                 (click)="openChangeRepModal(curWell)"
                 title="تغییر یا حذف نماینده این چاه"
               >
@@ -152,9 +152,9 @@ import { parseHoursNumber } from '@core/mock-data';
               </strong>
             </div>
 
-            <div class="bg-emerald-50/60 rounded-xl p-2.5 text-center border border-emerald-100">
-              <span class="text-[11px] text-emerald-800 block">مجموع هزینه پیامک</span>
-              <strong class="text-sm font-bold text-emerald-950 font-mono">
+            <div class="bg-brand-subtle/60 rounded-xl p-2.5 text-center border border-line-strong">
+              <span class="text-[11px] text-primary block">مجموع هزینه پیامک</span>
+              <strong class="text-sm font-bold text-brand-strong font-mono">
                 {{ formatNumberFa(totalSmsCostTomans()) }} تومان
               </strong>
             </div>
@@ -220,8 +220,8 @@ import { parseHoursNumber } from '@core/mock-data';
 
                 <!-- Add Water Year Form -->
                 @if (showAddWaterYearForm()) {
-                  <div class="p-4 bg-emerald-50/50 border border-emerald-200 rounded-xl space-y-4">
-                    <h3 class="text-xs font-bold text-emerald-900">تعریف دوره جدید سال آبی</h3>
+                  <div class="p-4 bg-brand-subtle/50 border border-line-strong rounded-xl space-y-4">
+                    <h3 class="text-xs font-bold text-brand-strong">تعریف دوره جدید سال آبی</h3>
 
                     <div>
                       <label for="wy-title" class="form-label text-xs">عنوان سال آبی <span class="text-rose-500">*</span></label>
@@ -312,7 +312,7 @@ import { parseHoursNumber } from '@core/mock-data';
                             }
                           </div>
                         </div>
-                        <span class="inline-flex items-center text-[11px] font-bold bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-full border border-emerald-200">
+                        <span class="inline-flex items-center text-[11px] font-bold bg-brand-subtle text-primary px-2.5 py-1 rounded-full border border-line-strong">
                           فعال
                         </span>
                       </div>
@@ -357,7 +357,7 @@ import { parseHoursNumber } from '@core/mock-data';
                     <label class="inline-flex items-center gap-1.5 text-xs text-gray-700 select-none cursor-pointer py-1 px-2 rounded-lg hover:bg-gray-100">
                       <input
                         type="checkbox"
-                        class="form-checkbox h-3.5 w-3.5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                        class="form-checkbox h-3.5 w-3.5 text-primary rounded border-gray-300 focus:ring-primary"
                         [ngModel]="addFarmerIncludeHoursPerShare()"
                         (ngModelChange)="addFarmerIncludeHoursPerShare.set($event)"
                       />
@@ -384,7 +384,7 @@ import { parseHoursNumber } from '@core/mock-data';
                     @for (wf of curWellFarmers(); track wf.id) {
                       <div class="p-3.5 bg-white border border-gray-200 rounded-xl flex items-center justify-between gap-3 flex-wrap shadow-2xs">
                         <div class="flex items-center gap-3">
-                          <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center">
+                          <div class="w-10 h-10 rounded-full bg-brand-soft text-primary font-bold text-xs flex items-center justify-center">
                             {{ wf.farmer_name.charAt(0) }}
                           </div>
                           <div>
@@ -394,7 +394,7 @@ import { parseHoursNumber } from '@core/mock-data';
                             </div>
                             <div class="flex items-center gap-2 mt-1.5 flex-wrap">
                               @if (wf.allocatedHours !== undefined && wf.allocatedHours !== null) {
-                                <span class="inline-flex items-center gap-1 text-[11px] font-medium bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
+                                <span class="inline-flex items-center gap-1 text-[11px] font-medium bg-brand-subtle text-primary px-2 py-0.5 rounded border border-line-strong">
                                   سهمیه: <strong class="font-bold">{{ wf.allocatedHours }}</strong> ساعت
                                 </span>
                                 <span class="inline-flex items-center gap-1 text-[11px] font-medium bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
@@ -440,9 +440,9 @@ import { parseHoursNumber } from '@core/mock-data';
               <div class="space-y-5">
                 <!-- Summary Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                  <div class="p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl shadow-2xs">
-                    <span class="text-xs text-emerald-800 font-semibold block mb-1">مجموع کل هزینه پیامک‌ها (ریال)</span>
-                    <div class="text-lg font-black text-emerald-950 font-mono">
+                  <div class="p-4 bg-brand-subtle/70 border border-line-strong/80 rounded-2xl shadow-2xs">
+                    <span class="text-xs text-primary font-semibold block mb-1">مجموع کل هزینه پیامک‌ها (ریال)</span>
+                    <div class="text-lg font-black text-brand-strong font-mono">
                       {{ formatNumberFa(totalSmsCostRials()) }} <span class="text-xs font-normal">ریال</span>
                     </div>
                   </div>
@@ -476,10 +476,10 @@ import { parseHoursNumber } from '@core/mock-data';
                 } @else {
                   <div class="space-y-3">
                     @for (exp of curWellExpenses(); track exp.id) {
-                      <div class="p-4 bg-white border border-gray-200 rounded-xl flex items-start justify-between gap-3 flex-wrap shadow-2xs hover:border-emerald-300 transition-colors">
+                      <div class="p-4 bg-white border border-gray-200 rounded-xl flex items-start justify-between gap-3 flex-wrap shadow-2xs hover:border-line-strong transition-colors">
                         <div class="space-y-2 flex-1 min-w-[240px]">
                           <div class="flex items-center gap-2 flex-wrap">
-                            <span class="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                            <span class="inline-flex items-center gap-1 text-[11px] font-bold bg-brand-subtle text-primary px-2.5 py-0.5 rounded-full border border-line-strong">
                               {{ exp.title }}
                             </span>
                             @if (exp.recipient_name) {
@@ -504,13 +504,13 @@ import { parseHoursNumber } from '@core/mock-data';
                           </div>
                         </div>
 
-                        <div class="text-left bg-emerald-50/70 border border-emerald-200 rounded-xl px-3.5 py-2.5 shrink-0">
-                          <span class="text-[10px] text-emerald-700 block font-medium">هزینه ارسال</span>
-                          <div class="text-base font-bold text-emerald-950 font-mono">
+                        <div class="text-left bg-brand-subtle/70 border border-line-strong rounded-xl px-3.5 py-2.5 shrink-0">
+                          <span class="text-[10px] text-primary block font-medium">هزینه ارسال</span>
+                          <div class="text-base font-bold text-brand-strong font-mono">
                             {{ formatNumberFa(exp.cost) }} <span class="text-xs font-normal">ریال</span>
                           </div>
                           @if (exp.cost >= 10) {
-                            <div class="text-[11px] text-emerald-700 font-mono mt-0.5">
+                            <div class="text-[11px] text-primary font-mono mt-0.5">
                               ({{ formatNumberFa(toTomans(exp.cost)) }} تومان)
                             </div>
                           }
@@ -595,7 +595,7 @@ import { parseHoursNumber } from '@core/mock-data';
           <div class="modal-card max-w-lg">
             <div class="modal-header">
               <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                <div class="w-8 h-8 rounded-lg bg-brand-soft text-primary flex items-center justify-center">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                     <circle cx="9" cy="7" r="4"></circle>
@@ -617,7 +617,7 @@ import { parseHoursNumber } from '@core/mock-data';
                 @if (well()?.representative_name) {
                   <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-2.5">
-                      <div class="w-8 h-8 rounded-full bg-emerald-200 text-emerald-900 font-bold text-xs flex items-center justify-center">
+                      <div class="w-8 h-8 rounded-full bg-brand-soft text-brand-strong font-bold text-xs flex items-center justify-center">
                         {{ well()?.representative_name?.charAt(0) }}
                       </div>
                       <div>
@@ -627,7 +627,7 @@ import { parseHoursNumber } from '@core/mock-data';
                         }
                       </div>
                     </div>
-                    <span class="text-[11px] px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-medium">فعال</span>
+                    <span class="text-[11px] px-2 py-0.5 rounded-md bg-brand-soft text-primary font-medium">فعال</span>
                   </div>
                 } @else {
                   <p class="text-xs text-amber-700 font-medium">⚠️ این چاه در حال حاضر فاقد نماینده است.</p>
@@ -741,7 +741,7 @@ import { parseHoursNumber } from '@core/mock-data';
                   <label class="flex items-center gap-2 text-xs text-gray-700 select-none cursor-pointer pt-1 border-t border-sky-200/50">
                     <input
                       type="checkbox"
-                      class="form-checkbox h-4 w-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                      class="form-checkbox h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary"
                       [ngModel]="quotaModalIncludeHoursPerShare()"
                       (ngModelChange)="quotaModalIncludeHoursPerShare.set($event)"
                       name="includeHps"
@@ -776,9 +776,9 @@ import { parseHoursNumber } from '@core/mock-data';
       justify-content: center;
       gap: 1rem;
       padding: 4rem 1rem;
-      background: #ffffff;
+      background: var(--surface);
       border-radius: 1rem;
-      border: 1px solid #e5ede7;
+      border: 1px solid var(--line-soft);
       color: #557566;
       font-size: 0.88rem;
     }
@@ -787,7 +787,7 @@ import { parseHoursNumber } from '@core/mock-data';
       width: 2rem;
       height: 2rem;
       border: 3px solid #d0e3d6;
-      border-top-color: #08633f;
+      border-top-color: var(--forest-700);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -799,9 +799,9 @@ import { parseHoursNumber } from '@core/mock-data';
     .empty-state {
       text-align: center;
       padding: 4rem 1rem;
-      background: #ffffff;
+      background: var(--surface);
       border-radius: 1rem;
-      border: 1px solid #e5ede7;
+      border: 1px solid var(--line-soft);
     }
 
     .tab-btn {
@@ -821,13 +821,13 @@ import { parseHoursNumber } from '@core/mock-data';
     }
 
     .tab-btn:hover {
-      color: #08633f;
+      color: var(--forest-700);
     }
 
     .tab-btn.active {
-      color: #08633f;
-      border-bottom-color: #08633f;
-      background: #ffffff;
+      color: var(--forest-700);
+      border-bottom-color: var(--forest-700);
+      background: var(--surface);
     }
 
     .tab-badge {
@@ -856,7 +856,7 @@ import { parseHoursNumber } from '@core/mock-data';
     .form-input, .form-select {
       width: 100%;
       border: 1px solid #c8ded1;
-      background: #ffffff;
+      background: var(--surface);
       border-radius: 0.65rem;
       padding: 0.65rem 0.85rem;
       font-size: 0.88rem;
@@ -866,8 +866,8 @@ import { parseHoursNumber } from '@core/mock-data';
     }
 
     .form-input:focus, .form-select:focus {
-      border-color: #08633f;
-      box-shadow: 0 0 0 3px rgba(8, 99, 63, 0.12);
+      border-color: var(--forest-700);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--forest-700) 12%, transparent);
     }
 
     /* Modal Styles */
@@ -894,7 +894,7 @@ import { parseHoursNumber } from '@core/mock-data';
 
     .modal-card {
       position: relative;
-      background: #ffffff;
+      background: var(--surface);
       border-radius: 1.25rem;
       width: 100%;
       max-width: 520px;
@@ -933,7 +933,7 @@ import { parseHoursNumber } from '@core/mock-data';
     }
 
     .modal-close-btn:hover {
-      color: #08633f;
+      color: var(--forest-700);
       background: #eef4f0;
     }
 
@@ -952,8 +952,8 @@ import { parseHoursNumber } from '@core/mock-data';
     }
 
     .btn-primary {
-      background: #08633f;
-      color: #ffffff;
+      background: var(--forest-700);
+      color: var(--on-brand);
       border: none;
       border-radius: 0.65rem;
       padding: 0.65rem 1.25rem;
@@ -985,7 +985,7 @@ import { parseHoursNumber } from '@core/mock-data';
     }
 
     .btn-secondary:hover {
-      background: #e5ede7;
+      background: var(--line-soft);
     }
   `,
 })

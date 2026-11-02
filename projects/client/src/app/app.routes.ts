@@ -5,6 +5,11 @@ import { roleGuard } from './core/role.guard';
 
 export const routes: Routes = [
   {
+    path: 'register-well',
+    title: 'درخواست ثبت چاه | اُدار',
+    loadComponent: () => import('./features/register-well/register-well.component').then((m) => m.RegisterWellComponent),
+  },
+  {
     path: 'login',
     title: 'ورود کشاورزان و نمایندگان | اُدار',
     canActivate: [loginGuard],

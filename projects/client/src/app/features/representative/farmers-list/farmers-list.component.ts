@@ -180,6 +180,40 @@ export class FarmersListComponent implements OnInit {
     });
   }
 
+  private dialogTrigger: HTMLElement | null = null;
+
+  private focusDialog(): void {
+    this.dialogTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setTimeout(() => document.querySelector<HTMLElement>('.modal-dialog .modal-close')?.focus());
+  }
+
+  private restoreDialogFocus(): void {
+    this.dialogTrigger?.focus();
+    this.dialogTrigger = null;
+  }
+
+  protected handleDialogKeydown(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    if (target.closest('[role="dialog"]') !== event.currentTarget) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      if (this.showUsageModal()) this.closeUsageModal();
+      else if (this.showAddFarmerModal()) this.closeAddFarmerModal();
+      else if (this.showEditFarmerModal()) this.closeEditFarmerModal();
+      else if (this.showDeleteFarmerModal()) this.closeDeleteFarmerModal();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const dialog = (event.currentTarget as HTMLElement).querySelector('.modal-dialog');
+    const controls = Array.from(dialog?.querySelectorAll<HTMLElement>(
+      'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+    ) ?? []).filter((element) => element.getClientRects().length > 0);
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }
+
   // --- Usage Modal ---
   protected openRecordUsageModal(farmerId?: string): void {
     this.selectedFarmerForUsage.set(farmerId || '');
@@ -193,10 +227,12 @@ export class FarmersListComponent implements OnInit {
     this.usageDateIso.set(jalaliToIso(today.year, today.month, today.day));
     this.modalError.set('');
     this.showUsageModal.set(true);
+    this.focusDialog();
   }
 
   protected closeUsageModal(): void {
     this.showUsageModal.set(false);
+    this.restoreDialogFocus();
   }
 
   protected submitUsage(): void {
@@ -305,10 +341,12 @@ export class FarmersListComponent implements OnInit {
     });
     this.modalError.set('');
     this.showAddFarmerModal.set(true);
+    this.focusDialog();
   }
 
   protected closeAddFarmerModal(): void {
     this.showAddFarmerModal.set(false);
+    this.restoreDialogFocus();
   }
 
   protected submitAddFarmer(): void {
@@ -398,10 +436,12 @@ export class FarmersListComponent implements OnInit {
     this.editFarmerName.set(farmer.name);
     this.editFarmerError.set('');
     this.showEditFarmerModal.set(true);
+    this.focusDialog();
   }
 
   protected closeEditFarmerModal(): void {
     this.showEditFarmerModal.set(false);
+    this.restoreDialogFocus();
     this.selectedFarmerForEdit.set(null);
     this.editFarmerError.set('');
   }
@@ -449,10 +489,12 @@ export class FarmersListComponent implements OnInit {
     this.selectedFarmerForDelete.set(farmer);
     this.deleteFarmerError.set('');
     this.showDeleteFarmerModal.set(true);
+    this.focusDialog();
   }
 
   protected closeDeleteFarmerModal(): void {
     this.showDeleteFarmerModal.set(false);
+    this.restoreDialogFocus();
     this.selectedFarmerForDelete.set(null);
     this.deleteFarmerError.set('');
   }

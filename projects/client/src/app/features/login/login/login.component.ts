@@ -7,6 +7,8 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { NgOptimizedImage } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { from } from 'rxjs';
@@ -22,7 +24,7 @@ import { ButtonComponent } from '../../../shared/button/button.component';
 
 @Component({
   selector: 'app-login',
-  imports: [ButtonComponent],
+  imports: [ButtonComponent, NgOptimizedImage, RouterLink],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
 })

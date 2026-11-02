@@ -43,7 +43,7 @@ import { faNumber } from '@core/mock-data';
         <div class="stat-card">
           <div class="stat-header">
             <span class="stat-title">تعداد کل چاه‌ها</span>
-            <div class="stat-icon-box bg-emerald-50 text-emerald-700">
+            <div class="stat-icon-box bg-brand-subtle text-primary">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5">
                 <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
                 <path d="M12 22a10 10 0 0 0 10-10H2a10 10 0 0 0 10 10z"></path>
@@ -133,7 +133,7 @@ import { faNumber } from '@core/mock-data';
                 @for (well of wells().slice(0, 4); track well.id) {
                   <div class="panel-item">
                     <div class="panel-item-icon">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-emerald-700">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-primary">
                         <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
                       </svg>
                     </div>
@@ -193,8 +193,8 @@ import { faNumber } from '@core/mock-data';
 
     /* Banner */
     .dashboard-banner {
-      background: linear-gradient(135deg, #063722 0%, #08633f 60%, #0e7d50 100%);
-      color: #ffffff;
+      background: linear-gradient(135deg, var(--forest-950) 0%, var(--forest-700) 60%, var(--brand-gradient-light) 100%);
+      color: var(--on-brand);
       border-radius: 1.25rem;
       padding: 1.75rem 2rem;
       display: flex;
@@ -202,7 +202,7 @@ import { faNumber } from '@core/mock-data';
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 1.5rem;
-      box-shadow: 0 12px 32px rgba(7, 72, 45, 0.18);
+      box-shadow: 0 12px 32px color-mix(in srgb, var(--forest-900) 18%, transparent);
       position: relative;
       overflow: hidden;
     }
@@ -222,7 +222,7 @@ import { faNumber } from '@core/mock-data';
     .banner-tag {
       display: inline-block;
       background: rgba(255, 255, 255, 0.16);
-      color: #86efac;
+      color: #d1f4dd;
       padding: 0.2rem 0.65rem;
       border-radius: 9999px;
       font-size: 0.75rem;
@@ -239,7 +239,7 @@ import { faNumber } from '@core/mock-data';
 
     .banner-desc {
       font-size: 0.88rem;
-      color: #d1fae5;
+      color: var(--mint-100);
       margin-top: 0.4rem;
       max-width: 600px;
     }
@@ -255,8 +255,8 @@ import { faNumber } from '@core/mock-data';
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      background: #ffffff;
-      color: #063722;
+      background: var(--surface);
+      color: var(--forest-950);
       padding: 0.65rem 1.25rem;
       border-radius: 0.75rem;
       font-weight: 700;
@@ -276,7 +276,7 @@ import { faNumber } from '@core/mock-data';
       align-items: center;
       gap: 0.5rem;
       background: rgba(255, 255, 255, 0.15);
-      color: #ffffff;
+      color: var(--on-brand);
       padding: 0.65rem 1.25rem;
       border-radius: 0.75rem;
       font-weight: 600;
@@ -298,20 +298,20 @@ import { faNumber } from '@core/mock-data';
     }
 
     .stat-card {
-      background: #ffffff;
+      background: var(--surface);
       border: 1px solid #dce8e0;
       border-radius: 1.15rem;
       padding: 1.25rem 1.5rem;
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      box-shadow: 0 4px 16px rgba(7, 72, 45, 0.04);
+      box-shadow: 0 4px 16px color-mix(in srgb, var(--forest-900) 4%, transparent);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     .stat-card:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(7, 72, 45, 0.08);
+      box-shadow: 0 8px 24px color-mix(in srgb, var(--forest-900) 8%, transparent);
     }
 
     .stat-header {
@@ -323,7 +323,7 @@ import { faNumber } from '@core/mock-data';
     .stat-title {
       font-size: 0.82rem;
       font-weight: 600;
-      color: #567064;
+      color: var(--ink-muted);
     }
 
     .stat-icon-box {
@@ -338,7 +338,7 @@ import { faNumber } from '@core/mock-data';
     .stat-value {
       font-size: 1.95rem;
       font-weight: 800;
-      color: #063722;
+      color: var(--forest-950);
       line-height: 1.2;
     }
 
@@ -354,7 +354,7 @@ import { faNumber } from '@core/mock-data';
       gap: 0.35rem;
       font-size: 0.8rem;
       font-weight: 700;
-      color: #08633f;
+      color: var(--forest-700);
       text-decoration: none;
     }
 
@@ -369,11 +369,11 @@ import { faNumber } from '@core/mock-data';
 
     /* Panels */
     .dashboard-panel {
-      background: #ffffff;
+      background: var(--surface);
       border: 1px solid #dce8e0;
       border-radius: 1.15rem;
       overflow: hidden;
-      box-shadow: 0 4px 16px rgba(7, 72, 45, 0.04);
+      box-shadow: 0 4px 16px color-mix(in srgb, var(--forest-900) 4%, transparent);
     }
 
     .panel-header {
@@ -388,14 +388,14 @@ import { faNumber } from '@core/mock-data';
     .panel-title {
       font-size: 0.95rem;
       font-weight: 800;
-      color: #063722;
+      color: var(--forest-950);
       margin: 0;
     }
 
     .panel-link {
       font-size: 0.8rem;
       font-weight: 600;
-      color: #08633f;
+      color: var(--forest-700);
       text-decoration: none;
     }
 
@@ -428,7 +428,7 @@ import { faNumber } from '@core/mock-data';
     .panel-item-icon {
       width: 32px;
       height: 32px;
-      background: #e2f4ea;
+      background: var(--mint-100);
       border-radius: 0.5rem;
       display: flex;
       align-items: center;
@@ -440,8 +440,8 @@ import { faNumber } from '@core/mock-data';
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      background: #d1fae5;
-      color: #065f46;
+      background: var(--mint-100);
+      color: var(--forest-800);
       font-weight: 700;
       font-size: 0.8rem;
       display: flex;
@@ -459,17 +459,17 @@ import { faNumber } from '@core/mock-data';
     .panel-item-title {
       font-size: 0.88rem;
       font-weight: 700;
-      color: #173b2b;
+      color: var(--ink);
     }
 
     .panel-item-sub {
       font-size: 0.72rem;
-      color: #6d887a;
+      color: var(--ink-muted);
     }
 
     .panel-item-badge {
-      background: #edf8f1;
-      color: #08633f;
+      background: var(--mint-50);
+      color: var(--forest-700);
       padding: 0.2rem 0.55rem;
       border-radius: 9999px;
       font-size: 0.72rem;

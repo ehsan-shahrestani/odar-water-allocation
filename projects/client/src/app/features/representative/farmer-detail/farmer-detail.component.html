@@ -80,7 +80,7 @@
                   <span class="triad-lbl">باقی‌مانده</span>
                   <strong
                     class="triad-val"
-                    [class.text-emerald-700]="detail.remainingHours > 0"
+                    [class.text-primary]="detail.remainingHours > 0"
                     [class.text-rose-600]="detail.remainingHours <= 0"
                   >
                     {{ hoursDisplay(detail.remainingHours) }}
@@ -109,6 +109,8 @@
                     <span class="meta-label">میزان مصرف از سهمیه</span>
                     <span class="meta-pct" [class]="'text-' + usageLevel()">
                       {{ number(usagePercent()) }}٪
+                      @if (usageLevel() === 'warning') { <span> · مصرف بالا</span> }
+                      @if (usageLevel() === 'critical') { <span> · نزدیک به پایان</span> }
                     </span>
                   </div>
                 </div>
@@ -141,6 +143,10 @@
                 </button>
               }
 
+              <button type="button" class="btn-act-secondary" (click)="openTransfer()" [disabled]="!selectedWaterYearId() || availableWellFarmers().length === 0">
+                انتقال سهمیه آب
+              </button>
+
               <button
                 type="button"
                 class="btn-act-secondary"
@@ -166,17 +172,16 @@
       </aside>
 
       <!-- ==================== MAIN CONTENT: WATER YEARS & USAGES ==================== -->
-      <main class="detail-main-col">
+      <div class="detail-main-col">
         <!-- Water Year Selector Pills -->
         @if (waterYears().length > 0) {
-          <div class="wy-pills-row" role="tablist" aria-label="انتخاب سال آبی">
+          <div class="wy-pills-row" role="group" aria-label="انتخاب سال آبی">
             @for (wy of waterYears(); track wy.id) {
               <button
                 type="button"
-                role="tab"
                 class="wy-pill"
                 [class.active]="wy.id === selectedWaterYearId()"
-                [attr.aria-selected]="wy.id === selectedWaterYearId()"
+                [attr.aria-pressed]="wy.id === selectedWaterYearId()"
                 (click)="selectWaterYear(wy.id)"
               >
                 @if (wy.isActive) {
@@ -212,6 +217,24 @@
             </a>
           </div>
         } @else if (farmerDetail(); as detail) {
+          <section class="usages-card mb-4" aria-labelledby="transfers-title">
+            <div class="usages-header"><h2 id="transfers-title" class="usages-title">تاریخچه انتقال آب</h2></div>
+            @if (transfersLoading()) {
+              <p class="p-4" role="status">در حال دریافت انتقال‌ها...</p>
+            } @else if (transfersError()) {
+              <div class="p-4" role="alert"><p>دریافت انتقال‌ها ناموفق بود.</p><button app-button type="button" variant="secondary" (click)="retryTransfers()">تلاش مجدد</button></div>
+            } @else if (transfers().length) {
+              <ul class="p-4 space-y-3">
+                @for (transfer of transfers(); track transfer.id) {
+                  <li class="border-b border-stone-200 pb-2">
+                    <strong>{{ transfer.direction === 'out' ? 'انتقال به' : 'دریافت از' }} {{ transfer.otherName }} · {{ hoursDisplay(transfer.hours) }}</strong>
+                    <div>{{ transfer.kind === 'sale' ? 'فروش' : transfer.kind === 'loan' ? 'قرض' : transfer.kind === 'return' ? 'بازپرداخت' : 'اصلاح' }} · {{ transfer.date }}</div>
+                    @if (transfer.description) { <div>{{ transfer.description }}</div> }
+                  </li>
+                }
+              </ul>
+            } @else { <p class="p-4">انتقالی ثبت نشده است.</p> }
+          </section>
           <div class="usages-card">
             <div class="usages-header">
               <div class="flex items-center gap-2">
@@ -345,13 +368,13 @@
             }
           </div>
         }
-      </main>
+      </div>
     </div>
   }
 
   <!-- ==================== MODAL: RECORD USAGE ==================== -->
   @if (showUsageModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-usage-title">
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-usage-title" appDialogFocus (dialogClose)="closeUsageModal()">
       <button
         type="button"
         class="modal-overlay"
@@ -376,7 +399,7 @@
               <span class="form-label mb-0">مدت زمان مصرف *</span>
               @if (farmerDetail(); as d) {
                 <span class="text-xs text-stone-600 font-medium">
-                  حداکثر مجاز: <strong class="text-emerald-800">{{ hoursDisplay(d.remainingHours) }}</strong>
+                  حداکثر مجاز: <strong class="text-brand-strong">{{ hoursDisplay(d.remainingHours) }}</strong>
                 </span>
               }
             </div>
@@ -394,7 +417,7 @@
                     [value]="usageMinutesPart()"
                     (input)="usageMinutesPart.set($any($event.target).value)"
                   />
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium pointer-events-none select-none">دقیقه</span>
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-600 font-medium pointer-events-none select-none">دقیقه</span>
                 </div>
               </div>
 
@@ -410,14 +433,14 @@
                     [value]="usageHoursPart()"
                     (input)="usageHoursPart.set($any($event.target).value)"
                   />
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium pointer-events-none select-none">ساعت</span>
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-600 font-medium pointer-events-none select-none">ساعت</span>
                 </div>
               </div>
             </div>
 
             @if (parsedUsagePreview()) {
-              <div class="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200/80 rounded-lg px-3 py-1.5 mt-2 flex items-center gap-1.5">
-                <svg class="w-4 h-4 text-emerald-600 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <div class="text-xs text-brand-strong bg-brand-subtle border border-line-strong rounded-lg px-3 py-1.5 mt-2 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-primary shrink-0" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" />
                 </svg>
                 <span>مجموع کارکرد: <strong>{{ parsedUsagePreview() }}</strong></span>
@@ -509,9 +532,41 @@
     </div>
   }
 
+  @if (showTransfer()) {
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="transfer-title" (keydown.escape)="closeTransfer()" (keydown)="trapTransferFocus($event)">
+      <button type="button" class="modal-overlay" aria-label="بستن پنجره" (click)="closeTransfer()" [disabled]="submitting()"></button>
+      <div class="modal-dialog">
+        <div class="modal-header"><h2 id="transfer-title" class="modal-title">انتقال سهمیه آب</h2><button type="button" class="modal-close" aria-label="بستن" (click)="closeTransfer()" [disabled]="submitting()">×</button></div>
+        <form class="modal-form" (submit)="$event.preventDefault(); submitTransfer()">
+          <label for="transfer-direction" class="form-label">جهت انتقال</label>
+          <select id="transfer-direction" class="form-input" [value]="transferDirection()" (change)="transferDirection.set($any($event.target).value)">
+            <option value="out">از این کشاورز به دیگری</option><option value="in">از دیگری به این کشاورز</option>
+          </select>
+          <label for="transfer-farmer" class="form-label">کشاورز دیگر</label>
+          <select id="transfer-farmer" class="form-input" [value]="transferTarget()" (change)="transferTarget.set($any($event.target).value)" required>
+            <option value="">انتخاب کشاورز</option>
+            @for (farmer of availableWellFarmers(); track farmer.wellFarmerId) { <option [value]="farmer.wellFarmerId">{{ farmer.name }}</option> }
+          </select>
+          <label for="transfer-kind" class="form-label">نوع انتقال</label>
+          <select id="transfer-kind" class="form-input" [value]="transferKind()" (change)="transferKind.set($any($event.target).value)">
+            <option value="sale">فروش</option><option value="loan">قرض</option><option value="return">بازپرداخت قرض</option><option value="correction">اصلاح</option>
+          </select>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label for="transfer-hours" class="form-label">ساعت</label><input id="transfer-hours" class="form-input" inputmode="numeric" [value]="transferHours()" (input)="transferHours.set($any($event.target).value)" /></div>
+            <div><label for="transfer-minutes" class="form-label">دقیقه</label><input id="transfer-minutes" class="form-input" inputmode="numeric" [value]="transferMinutes()" (input)="transferMinutes.set($any($event.target).value)" /></div>
+          </div>
+          <label for="transfer-description" class="form-label">توضیحات (اختیاری)</label>
+          <input id="transfer-description" class="form-input" [value]="transferDescription()" (input)="transferDescription.set($any($event.target).value)" />
+          @if (modalError()) { <p role="alert" class="text-red-700">{{ modalError() }}</p> }
+          <div class="modal-actions"><button app-button type="submit" [disabled]="submitting()">{{ submitting() ? 'در حال ثبت...' : 'ثبت انتقال' }}</button><button app-button type="button" variant="secondary" (click)="closeTransfer()" [disabled]="submitting()">انصراف</button></div>
+        </form>
+      </div>
+    </div>
+  }
+
   <!-- ==================== MODAL: EDIT QUOTA ==================== -->
   @if (showQuotaModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-quota-title">
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-quota-title" appDialogFocus (dialogClose)="closeQuotaModal()">
       <button
         type="button"
         class="modal-overlay"
@@ -571,7 +626,7 @@
               <label class="flex items-center gap-2 text-xs text-slate-700 select-none cursor-pointer p-2.5 bg-slate-50 rounded-lg border border-slate-200 mt-2">
                 <input
                   type="checkbox"
-                  class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  class="rounded border-slate-300 text-primary focus:ring-primary"
                   [checked]="quotaModalIncludeHoursPerShare()"
                   (change)="quotaModalIncludeHoursPerShare.set($any($event.target).checked)"
                 />
@@ -601,7 +656,7 @@
 
   <!-- ==================== MODAL: EDIT FARMER ==================== -->
   @if (showEditFarmerModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-edit-farmer-detail-title">
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-edit-farmer-detail-title" appDialogFocus (dialogClose)="closeEditFarmerModal()">
       <button
         type="button"
         class="modal-overlay"
@@ -655,7 +710,7 @@
 
   <!-- ==================== MODAL: DELETE FARMER CONFIRMATION ==================== -->
   @if (showDeleteFarmerModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-delete-farmer-detail-title">
+    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-delete-farmer-detail-title" appDialogFocus (dialogClose)="closeDeleteFarmerModal()">
       <button
         type="button"
         class="modal-overlay"

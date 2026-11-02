@@ -12,6 +12,7 @@ import {
   WaterYearItem,
 } from '../../../core/portal-data.service';
 import { ButtonComponent } from '../../../shared/button/button.component';
+import { DialogFocusDirective } from '../../../shared/dialog-focus/dialog-focus.directive';
 import { CardComponent } from '../../../shared/card/card.component';
 import {
   calculateTotalHours,
@@ -33,7 +34,7 @@ export function normalizeName(name: string): string {
 
 @Component({
   selector: 'app-representative-home',
-  imports: [ButtonComponent, CardComponent, FormField, RouterLink, PersianDatepickerComponent],
+  imports: [DialogFocusDirective, ButtonComponent, CardComponent, FormField, RouterLink, PersianDatepickerComponent],
   templateUrl: './representative-home.component.html',
   styleUrl: './representative-home.component.css',
 })
@@ -470,10 +471,10 @@ export class RepresentativeHomeComponent implements OnInit {
   protected openAddWaterYearModal(): void {
     this.wyDesc.set('');
     this.wyHoursPerShare.set('');
-    this.wyStartDate.set('1404/07/01');
-    this.wyEndDate.set('1405/06/31');
-    this.wyStartIso.set('2025-09-23');
-    this.wyEndIso.set('2026-09-22');
+    this.wyStartDate.set('');
+    this.wyEndDate.set('');
+    this.wyStartIso.set('');
+    this.wyEndIso.set('');
     this.wyModalError.set('');
     this.showAddWaterYearModal.set(true);
   }
@@ -500,6 +501,11 @@ export class RepresentativeHomeComponent implements OnInit {
       const msg = 'لطفاً تمامی فیلدهای الزامی را تکمیل کنید.';
       this.wyModalError.set(msg);
       toast.error(msg);
+      return;
+    }
+
+    if (endIso < startIso) {
+      this.wyModalError.set('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد.');
       return;
     }
 

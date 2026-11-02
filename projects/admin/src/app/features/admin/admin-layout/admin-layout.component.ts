@@ -74,6 +74,11 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
             <span>داشبورد و آمار</span>
           </a>
 
+          <a routerLink="/admin/registration-requests" routerLinkActive="nav-item-active" (click)="toggleSidebar(false)" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 4h11v16H5V4h3m0-2h8v4H8zM8 11h8M8 15h8" /></svg>
+            <span>درخواست ثبت چاه</span>
+          </a>
+
           <a
             routerLink="/admin/users"
             routerLinkActive="nav-item-active"
@@ -173,7 +178,7 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
 
           <div class="topbar-left">
             <div class="today-date-badge">
-              <svg class="w-4 h-4 text-emerald-700 ml-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg class="w-4 h-4 text-primary ml-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                 <line x1="16" y1="2" x2="16" y2="6"></line>
                 <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -184,7 +189,7 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
 
             <div class="admin-profile-pill hidden sm:flex">
               <span class="status-dot"></span>
-              <span class="text-xs font-semibold text-emerald-950">{{ userName() }}</span>
+              <span class="text-xs font-semibold text-brand-strong">{{ userName() }}</span>
             </div>
           </div>
         </header>
@@ -210,7 +215,7 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
       display: flex;
       width: 100%;
       height: 100vh;
-      background: #f3f7f4;
+      background: var(--surface-canvas);
       position: relative;
     }
 
@@ -218,8 +223,8 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
     .admin-sidebar {
       width: 270px;
       height: 100%;
-      background: #063722;
-      color: #ffffff;
+      background: var(--forest-950);
+      color: var(--on-brand);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
@@ -267,8 +272,8 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
     .brand-icon {
       width: 32px;
       height: 32px;
-      color: #4ade80;
-      background: rgba(74, 222, 128, 0.15);
+      color: #d1f4dd;
+      background: color-mix(in srgb, var(--mint-100) 18%, transparent);
       padding: 6px;
       border-radius: 10px;
     }
@@ -278,14 +283,14 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
       font-weight: 800;
       font-size: 1.15rem;
       letter-spacing: -0.5px;
-      color: #ffffff;
+      color: var(--on-brand);
       line-height: 1.3;
     }
 
     .brand-subtitle {
       display: block;
       font-size: 0.75rem;
-      color: #86efac;
+      color: #d1f4dd;
     }
 
     .sidebar-close-btn {
@@ -323,13 +328,13 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
     .nav-icon {
       width: 20px;
       height: 20px;
-      color: #86efac;
+      color: #d1f4dd;
       transition: transform 0.18s ease;
     }
 
     .nav-item:hover {
       background: rgba(255, 255, 255, 0.08);
-      color: #ffffff;
+      color: var(--on-brand);
     }
 
     .nav-item:hover .nav-icon {
@@ -337,14 +342,14 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
     }
 
     .nav-item-active {
-      background: #08633f !important;
-      color: #ffffff !important;
+      background: var(--forest-700) !important;
+      color: var(--on-brand) !important;
       font-weight: 700;
-      box-shadow: 0 4px 14px rgba(8, 99, 63, 0.4);
+      box-shadow: 0 4px 14px color-mix(in srgb, var(--forest-700) 40%, transparent);
     }
 
     .nav-item-active .nav-icon {
-      color: #4ade80;
+      color: #d1f4dd;
     }
 
     /* Sidebar Footer */
@@ -367,8 +372,8 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
       width: 38px;
       height: 38px;
       border-radius: 50%;
-      background: #10b981;
-      color: #064e3b;
+      background: var(--mint-100);
+      color: var(--forest-900);
       font-weight: 800;
       display: flex;
       align-items: center;
@@ -385,7 +390,7 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
     .user-name {
       font-size: 0.88rem;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--on-brand);
     }
 
     .user-role {
@@ -432,14 +437,14 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
     /* Topbar */
     .admin-topbar {
       height: 68px;
-      background: #ffffff;
-      border-bottom: 1px solid #e2ece5;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line-soft);
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 1.5rem;
       flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(7, 72, 45, 0.03);
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--forest-900) 3%, transparent);
     }
 
     .topbar-right {
@@ -451,7 +456,7 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
     .hamburger-btn {
       background: transparent;
       border: none;
-      color: #173b2b;
+      color: var(--ink);
       cursor: pointer;
       padding: 4px;
       display: flex;
@@ -466,14 +471,14 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
     .topbar-title {
       font-size: 1.15rem;
       font-weight: 800;
-      color: #173b2b;
+      color: var(--ink);
       line-height: 1.25;
       margin: 0;
     }
 
     .topbar-subtitle {
       font-size: 0.75rem;
-      color: #567064;
+      color: var(--ink-muted);
     }
 
     .topbar-left {
@@ -485,22 +490,22 @@ import { AdminAuthService } from '../../../core/admin-auth.service';
     .today-date-badge {
       display: flex;
       align-items: center;
-      background: #edf8f1;
-      color: #064e3b;
+      background: var(--mint-50);
+      color: var(--forest-800);
       padding: 0.4rem 0.85rem;
       border-radius: 9999px;
       font-size: 0.8rem;
       font-weight: 600;
-      border: 1px solid #d0ebd8;
+      border: 1px solid var(--line-strong);
     }
 
     .admin-profile-pill {
       align-items: center;
       gap: 0.5rem;
-      background: #f4f8f5;
+      background: var(--surface-soft);
       padding: 0.4rem 0.75rem;
       border-radius: 0.5rem;
-      border: 1px solid #e2ece5;
+      border: 1px solid var(--line-soft);
     }
 
     .status-dot {

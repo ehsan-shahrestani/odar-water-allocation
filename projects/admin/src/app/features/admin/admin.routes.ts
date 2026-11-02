@@ -13,6 +13,11 @@ export const routes: Routes = [
           import('./admin-home/admin-home.component').then((m) => m.AdminHomeComponent),
       },
       {
+        path: 'registration-requests',
+        title: 'درخواست‌های ثبت چاه | اُدار',
+        loadComponent: () => import('./registration-requests/registration-requests.component').then((m) => m.RegistrationRequestsComponent),
+      },
+      {
         path: 'users',
         title: 'مدیریت کاربران | اُدار',
         loadComponent: () =>

@@ -29,6 +29,18 @@ describe('PersianDatepickerComponent (Wheel Picker)', () => {
     expect(component.label()).toBe('تاریخ شروع دوره');
   });
 
+  it('clears a selected date without nesting controls or opening the picker', () => {
+    component.value.set('1404/07/01');
+    fixture.detectChanges();
+    const trigger = fixture.nativeElement.querySelector('.datepicker-trigger') as HTMLButtonElement;
+    const clear = fixture.nativeElement.querySelector('.clear-btn') as HTMLButtonElement;
+    expect(trigger.contains(clear)).toBe(false);
+    clear.click();
+    fixture.detectChanges();
+    expect(component.value()).toBe('');
+    expect(fixture.nativeElement.querySelector('.wheel-modal')).toBeNull();
+  });
+
   it('should accurately calculate Jalali days per month and leap years', () => {
     // Months 1-6 have 31 days
     expect(getDaysInJalaliMonth(1404, 1)).toBe(31);

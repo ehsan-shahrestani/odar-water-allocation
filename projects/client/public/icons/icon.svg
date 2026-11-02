@@ -2,20 +2,20 @@
   <defs>
     <linearGradient id="background" x1="80" y1="48" x2="440" y2="472" gradientUnits="userSpaceOnUse">
       <stop stop-color="#063722" />
-      <stop offset="0.58" stop-color="#08704A" />
-      <stop offset="1" stop-color="#12A06A" />
+      <stop offset="0.58" stop-color="#087049" />
+      <stop offset="1" stop-color="#17a76c" />
     </linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#background)" />
-  <circle cx="256" cy="256" r="166" fill="#E5F5EB" />
+  <circle cx="256" cy="256" r="166" fill="#e5f5eb" />
   <path
     d="M256 132c-21 43-82 105-82 177 0 48 37 86 82 86s82-38 82-86c0-72-61-134-82-177Z"
-    fill="#08704A"
+    fill="#087049"
   />
   <path
     d="M214 319c24 9 68 0 87-36"
     fill="none"
-    stroke="#DDF6E7"
+    stroke="#ddf6e7"
     stroke-linecap="round"
     stroke-width="18"
   />

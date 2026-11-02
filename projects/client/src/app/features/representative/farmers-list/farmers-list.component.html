@@ -1,6 +1,6 @@
 <div class="farmers-page">
   <!-- Page Header -->
-  <div class="page-header">
+  <div class="farmers-header">
     <div class="header-content">
       <h1 class="page-title">
         <span>لیست کشاورزان</span>
@@ -18,7 +18,7 @@
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
         </svg>
-        <span>افزودن کشاورز جدید</span>
+        <span>افزودن کشاورز</span>
       </button>
 
       <button
@@ -29,7 +29,7 @@
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span>ثبت کارکرد</span>
+        <span>ثبت مصرف</span>
       </button>
     </div>
   </div>
@@ -40,7 +40,7 @@
       <input
         type="search"
         class="search-input"
-        placeholder="جستجوی نام یا شماره تماس کشاورز..."
+        placeholder="نام یا شماره موبایل"
         [value]="searchQuery()"
         (input)="searchQuery.set($any($event.target).value)"
         aria-label="جستجوی کشاورزان"
@@ -159,6 +159,8 @@
                       </div>
                       <span class="table-progress-val" [class]="'level-' + usageLevel(farmer)">
                         {{ number(usagePercent(farmer)) }}٪
+                        @if (usageLevel(farmer) === 'warning') { <small class="usage-status">مصرف بالا</small> }
+                        @if (usageLevel(farmer) === 'critical') { <small class="usage-status">نزدیک به پایان</small> }
                       </span>
                     </div>
                   } @else {
@@ -224,103 +226,68 @@
     <div class="mobile-farmers-list">
       @for (farmer of filteredFarmers(); track farmer.id) {
         <div class="farmer-mobile-card">
-          <!-- Top Row: Avatar, Name, Phone & Remaining Tag -->
-          <div class="fmc-top">
-            <a [routerLink]="['/representative/farmers', farmer.id]" class="fmc-identity">
-              <span class="fmc-avatar" aria-hidden="true">{{ farmer.name.slice(0, 1) }}</span>
-              <div class="fmc-meta">
-                <span class="fmc-name">{{ farmer.name }}</span>
-                <span class="fmc-phone" dir="ltr">{{ number(farmer.phone) }}</span>
-              </div>
-            </a>
+          <a [routerLink]="['/representative/farmers', farmer.id]" class="fmc-identity">
+            <span class="fmc-avatar" aria-hidden="true">{{ farmer.name.slice(0, 1) }}</span>
+            <span class="fmc-meta">
+              <span class="fmc-name">{{ farmer.name }}</span>
+              @if (farmer.phone) { <span class="fmc-phone" dir="ltr">{{ number(farmer.phone) }}</span> }
+            </span>
+          </a>
 
-            @if (farmer.quotaHours > 0) {
-              <span
-                class="remaining-tag"
-                [class.positive]="farmer.remainingHours > 0"
-                [class.negative]="farmer.remainingHours <= 0"
-              >
-                مانده: {{ hoursDisplay(farmer.remainingHours) }}
-              </span>
-            } @else {
-              <span class="text-stone-400 text-xs">بدون سهمیه</span>
-            }
-          </div>
+          @if (farmer.quotaHours > 0) {
+            <div class="fmc-balance" [class.exhausted]="farmer.remainingHours <= 0">
+              <span>باقی‌مانده آب</span>
+              <strong class="remaining-tag" [class.positive]="farmer.remainingHours > 0" [class.negative]="farmer.remainingHours <= 0">
+                {{ hoursDisplay(farmer.remainingHours) }}
+              </strong>
+            </div>
+          } @else {
+            <div class="fmc-balance no-quota">سهمیه‌ای ثبت نشده است</div>
+          }
 
-          <!-- Middle Row: Quota Stats Triad -->
           <div class="fmc-stats-grid">
             <div class="fmc-stat-item">
               <span class="fmc-lbl">سهمیه کل</span>
-              <strong class="fmc-val">{{ farmer.quotaHours > 0 ? number(farmer.quotaHours) : '—' }}</strong>
-              <small class="fmc-unit">ساعت</small>
+              <strong class="fmc-val">{{ farmer.quotaHours > 0 ? hoursDisplay(farmer.quotaHours) : '—' }}</strong>
             </div>
             <div class="fmc-stat-item">
               <span class="fmc-lbl">مصرف‌شده</span>
-              <strong class="fmc-val text-amber-700">{{ hoursDisplay(farmer.usedHours) }}</strong>
-            </div>
-            <div class="fmc-stat-item">
-              <span class="fmc-lbl">درصد مصرف</span>
-              <strong class="fmc-val" [class]="'text-' + usageLevel(farmer)">
-                {{ number(usagePercent(farmer)) }}٪
-              </strong>
-              <small class="fmc-unit">سهمیه</small>
+              <strong class="fmc-val">{{ hoursDisplay(farmer.usedHours) }}</strong>
             </div>
           </div>
 
-          <!-- Progress Bar -->
           @if (farmer.quotaHours > 0) {
-            <div class="fmc-bar-track">
-              <div
-                class="fmc-bar-fill"
-                [class]="'fill-' + usageLevel(farmer)"
-                [style.width.%]="usagePercent(farmer)"
-              ></div>
+            <div class="fmc-progress">
+              <div class="fmc-progress-label">
+                <span>مصرف از سهمیه</span>
+                <strong class="fmc-val" [class]="'text-' + usageLevel(farmer)">
+                  {{ number(usagePercent(farmer)) }}٪
+                  @if (usageLevel(farmer) === 'warning') { <span class="usage-status text-warning"> · مصرف بالا</span> }
+                  @if (usageLevel(farmer) === 'critical') { <span class="usage-status text-critical"> · نزدیک به پایان</span> }
+                </strong>
+              </div>
+              <div class="fmc-bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                [attr.aria-valuenow]="usagePercent(farmer)" [attr.aria-label]="'درصد مصرف ' + farmer.name">
+                <div class="fmc-bar-fill" [class]="'fill-' + usageLevel(farmer)" [style.width.%]="usagePercent(farmer)"></div>
+              </div>
             </div>
           }
 
-          <!-- Action Buttons -->
           <div class="fmc-actions-row">
-            <button
-              type="button"
-              class="fmc-btn-record"
-              (click)="openRecordUsageModal(farmer.id)"
-            >
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button type="button" class="fmc-btn-record" (click)="openRecordUsageModal(farmer.id)"
+              [attr.aria-label]="'ثبت مصرف برای ' + farmer.name">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
               <span>ثبت مصرف</span>
             </button>
-            <a
-              [routerLink]="['/representative/farmers', farmer.id]"
-              class="fmc-btn-profile"
-            >
-              <span>پرونده</span>
-              <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+            <a [routerLink]="['/representative/farmers', farmer.id]" class="fmc-btn-profile"
+              [attr.aria-label]="'مشاهده پرونده ' + farmer.name">
+              <span>مشاهده پرونده</span>
+              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
               </svg>
             </a>
-            <button
-              type="button"
-              class="fmc-btn-icon edit"
-              (click)="openEditFarmerModal(farmer)"
-              title="ویرایش نام کشاورز"
-              aria-label="ویرایش نام کشاورز"
-            >
-              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              class="fmc-btn-icon delete"
-              (click)="openDeleteFarmerModal(farmer)"
-              title="حذف کشاورز از چاه"
-              aria-label="حذف کشاورز از چاه"
-            >
-              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-              </svg>
-            </button>
           </div>
         </div>
       }
@@ -329,7 +296,7 @@
 
   <!-- ==================== MODAL: ADD FARMER ==================== -->
   @if (showAddFarmerModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-add-farmer-title">
+    <div class="modal-backdrop" role="dialog" aria-modal="true" (keydown)="handleDialogKeydown($event)" aria-labelledby="modal-add-farmer-title">
       <button
         type="button"
         class="modal-overlay"
@@ -436,7 +403,7 @@
 
   <!-- ==================== MODAL: RECORD USAGE ==================== -->
   @if (showUsageModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-usage-title">
+    <div class="modal-backdrop" role="dialog" aria-modal="true" (keydown)="handleDialogKeydown($event)" aria-labelledby="modal-usage-title">
       <button
         type="button"
         class="modal-overlay"
@@ -467,7 +434,7 @@
             >
               <option value="">-- انتخاب کشاورز --</option>
               @for (farmer of dashboard()?.farmers; track farmer.id) {
-                <option [value]="farmer.id">
+                <option [value]="farmer.id" [selected]="selectedFarmerForUsage() === farmer.id">
                   {{ farmer.name }} (باقی‌مانده: {{ hoursDisplay(farmer.remainingHours) }})
                 </option>
               }
@@ -480,7 +447,7 @@
               @if (selectedFarmerUsageRemaining() !== null) {
                 <span class="text-xs text-stone-600 font-medium">
                   حداکثر مجاز:
-                  <strong class="text-emerald-800"
+                  <strong class="text-brand-strong"
                     >{{ hoursDisplay(selectedFarmerUsageRemaining()!) }}</strong
                   >
                 </span>
@@ -500,7 +467,7 @@
                     [value]="usageMinutesPart()"
                     (input)="usageMinutesPart.set($any($event.target).value)"
                   />
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium pointer-events-none select-none">دقیقه</span>
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-600 font-medium pointer-events-none select-none">دقیقه</span>
                 </div>
               </div>
 
@@ -516,14 +483,14 @@
                     [value]="usageHoursPart()"
                     (input)="usageHoursPart.set($any($event.target).value)"
                   />
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-medium pointer-events-none select-none">ساعت</span>
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-600 font-medium pointer-events-none select-none">ساعت</span>
                 </div>
               </div>
             </div>
 
             @if (parsedUsagePreview()) {
-              <div class="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200/80 rounded-lg px-3 py-1.5 mt-2 flex items-center gap-1.5">
-                <svg class="w-4 h-4 text-emerald-600 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <div class="text-xs text-brand-strong bg-brand-subtle border border-line-strong rounded-lg px-3 py-1.5 mt-2 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-primary shrink-0" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" />
                 </svg>
                 <span>مجموع کارکرد: <strong>{{ parsedUsagePreview() }}</strong></span>
@@ -616,7 +583,7 @@
 
   <!-- ==================== MODAL: EDIT FARMER ==================== -->
   @if (showEditFarmerModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-edit-farmer-title">
+    <div class="modal-backdrop" role="dialog" aria-modal="true" (keydown)="handleDialogKeydown($event)" aria-labelledby="modal-edit-farmer-title">
       <button
         type="button"
         class="modal-overlay"
@@ -670,7 +637,7 @@
 
   <!-- ==================== MODAL: DELETE FARMER CONFIRMATION ==================== -->
   @if (showDeleteFarmerModal()) {
-    <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-delete-farmer-title">
+    <div class="modal-backdrop" role="dialog" aria-modal="true" (keydown)="handleDialogKeydown($event)" aria-labelledby="modal-delete-farmer-title">
       <button
         type="button"
         class="modal-overlay"

@@ -82,7 +82,7 @@ import { UserProfile } from '@core/auth.model';
                   <td>
                     <div class="well-cell">
                       <div class="well-avatar-sm">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-emerald-700">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-primary">
                           <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
                           <path d="M12 22a10 10 0 0 0 10-10H2a10 10 0 0 0 10 10z"></path>
                         </svg>
@@ -107,7 +107,7 @@ import { UserProfile } from '@core/auth.model';
                       }
                       <button
                         type="button"
-                        class="text-[11px] text-emerald-700 hover:text-emerald-950 font-semibold bg-emerald-50/90 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md transition-colors shrink-0 cursor-pointer"
+                        class="text-[11px] text-primary hover:text-brand-strong font-semibold bg-brand-subtle/90 hover:bg-brand-soft border border-line-strong px-2 py-0.5 rounded-md transition-colors shrink-0 cursor-pointer"
                         (click)="$event.stopPropagation(); openChangeRepModal(well)"
                         title="تغییر یا حذف نماینده این چاه"
                       >
@@ -181,7 +181,7 @@ import { UserProfile } from '@core/auth.model';
                 <div class="card-top">
                   <div class="flex items-center gap-2.5">
                     <div class="well-avatar-sm">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-emerald-700">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4 text-primary">
                         <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
                         <path d="M12 22a10 10 0 0 0 10-10H2a10 10 0 0 0 10 10z"></path>
                       </svg>
@@ -315,7 +315,7 @@ import { UserProfile } from '@core/auth.model';
           <div class="modal-card max-w-lg">
             <div class="modal-header">
               <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                <div class="w-8 h-8 rounded-lg bg-brand-soft text-primary flex items-center justify-center">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                     <circle cx="9" cy="7" r="4"></circle>
@@ -337,7 +337,7 @@ import { UserProfile } from '@core/auth.model';
                 @if (targetWellForRep()?.representative_name) {
                   <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-2.5">
-                      <div class="w-8 h-8 rounded-full bg-emerald-200 text-emerald-900 font-bold text-xs flex items-center justify-center">
+                      <div class="w-8 h-8 rounded-full bg-brand-soft text-brand-strong font-bold text-xs flex items-center justify-center">
                         {{ targetWellForRep()?.representative_name?.charAt(0) }}
                       </div>
                       <div>
@@ -347,7 +347,7 @@ import { UserProfile } from '@core/auth.model';
                         }
                       </div>
                     </div>
-                    <span class="text-[11px] px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-medium">فعال</span>
+                    <span class="text-[11px] px-2 py-0.5 rounded-md bg-brand-soft text-primary font-medium">فعال</span>
                   </div>
                 } @else {
                   <p class="text-xs text-amber-700 font-medium">⚠️ این چاه در حال حاضر فاقد نماینده است.</p>
@@ -439,13 +439,13 @@ import { UserProfile } from '@core/auth.model';
     .section-title {
       font-size: 1.5rem;
       font-weight: 800;
-      color: #063722;
+      color: var(--forest-950);
       margin: 0;
     }
 
     .section-desc {
       font-size: 0.875rem;
-      color: #567064;
+      color: var(--ink-muted);
       margin-top: 0.25rem;
     }
 
@@ -453,20 +453,20 @@ import { UserProfile } from '@core/auth.model';
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      background: #08633f;
-      color: #ffffff;
+      background: var(--forest-700);
+      color: var(--on-brand);
       padding: 0.65rem 1.25rem;
       border-radius: 0.75rem;
       font-weight: 600;
       font-size: 0.9rem;
       border: none;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(8, 99, 63, 0.25);
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--forest-700) 25%, transparent);
       transition: all 0.18s ease;
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: #07482d;
+      background: var(--forest-900);
       transform: translateY(-1px);
     }
 
@@ -479,7 +479,7 @@ import { UserProfile } from '@core/auth.model';
       display: inline-flex;
       align-items: center;
       background: #e2ece5;
-      color: #173b2b;
+      color: var(--ink);
       padding: 0.65rem 1.25rem;
       border-radius: 0.75rem;
       font-weight: 600;
@@ -489,12 +489,12 @@ import { UserProfile } from '@core/auth.model';
     }
 
     .btn-secondary:hover {
-      background: #d4e3d8;
+      background: var(--line-strong);
     }
 
     /* Filters Card */
     .filter-card {
-      background: #ffffff;
+      background: var(--surface);
       border: 1px solid #dce8e0;
       border-radius: 1rem;
       padding: 1rem 1.25rem;
@@ -503,7 +503,7 @@ import { UserProfile } from '@core/auth.model';
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 1rem;
-      box-shadow: 0 2px 8px rgba(7, 72, 45, 0.04);
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--forest-900) 4%, transparent);
     }
 
     .search-input-wrap {
@@ -526,26 +526,26 @@ import { UserProfile } from '@core/auth.model';
       width: 100%;
       padding: 0.65rem 2.5rem 0.65rem 1rem;
       border-radius: 0.65rem;
-      border: 1px solid #d4e3d8;
+      border: 1px solid var(--line-strong);
       background: #f9fbf9;
       font-size: 0.88rem;
-      color: #173b2b;
+      color: var(--ink);
       outline: none;
       transition: border-color 0.15s ease;
     }
 
     .search-input:focus {
-      border-color: #08633f;
-      background: #ffffff;
+      border-color: var(--forest-700);
+      background: var(--surface);
     }
 
     /* Table Container */
     .table-container {
-      background: #ffffff;
+      background: var(--surface);
       border: 1px solid #dce8e0;
       border-radius: 1rem;
       overflow: hidden;
-      box-shadow: 0 4px 16px rgba(7, 72, 45, 0.04);
+      box-shadow: 0 4px 16px color-mix(in srgb, var(--forest-900) 4%, transparent);
     }
 
     .desktop-table {
@@ -565,8 +565,8 @@ import { UserProfile } from '@core/auth.model';
       padding: 1rem 1.25rem;
       font-size: 0.82rem;
       font-weight: 700;
-      color: #567064;
-      border-bottom: 1px solid #e5ede7;
+      color: var(--ink-muted);
+      border-bottom: 1px solid var(--line-soft);
     }
 
     .desktop-table td {
@@ -586,7 +586,7 @@ import { UserProfile } from '@core/auth.model';
     }
 
     .clickable-row:hover td {
-      background: #f4faf6;
+      background: var(--surface-tint);
     }
 
     .well-cell {
@@ -660,7 +660,7 @@ import { UserProfile } from '@core/auth.model';
 
     .btn-table-action {
       background: transparent;
-      border: 1px solid #d4e3d8;
+      border: 1px solid var(--line-strong);
       padding: 0.35rem 0.75rem;
       border-radius: 0.5rem;
       font-size: 0.8rem;
@@ -675,20 +675,20 @@ import { UserProfile } from '@core/auth.model';
 
     .btn-table-action:hover {
       background: #f0f6f2;
-      border-color: #08633f;
-      color: #08633f;
+      border-color: var(--forest-700);
+      color: var(--forest-700);
     }
 
     .btn-action-detail {
-      background: #edf7f1;
+      background: var(--surface-selected);
       border-color: #b8e0c9;
-      color: #08633f;
+      color: var(--forest-700);
     }
 
     .btn-action-detail:hover {
-      background: #08633f;
-      border-color: #08633f;
-      color: #ffffff;
+      background: var(--forest-700);
+      border-color: var(--forest-700);
+      color: var(--on-brand);
     }
 
     /* Mobile Cards */
@@ -707,7 +707,7 @@ import { UserProfile } from '@core/auth.model';
 
     .mobile-well-card {
       background: #fcfdfc;
-      border: 1px solid #e5ede7;
+      border: 1px solid var(--line-soft);
       border-radius: 0.85rem;
       padding: 0.85rem 1rem;
       display: flex;
@@ -718,8 +718,8 @@ import { UserProfile } from '@core/auth.model';
     }
 
     .mobile-well-card:hover {
-      border-color: #08633f;
-      box-shadow: 0 4px 12px rgba(8, 99, 63, 0.08);
+      border-color: var(--forest-700);
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--forest-700) 8%, transparent);
     }
 
     .card-top {
@@ -729,7 +729,7 @@ import { UserProfile } from '@core/auth.model';
     }
 
     .card-mid {
-      background: #ffffff;
+      background: var(--surface);
       padding: 0.65rem 0.85rem;
       border-radius: 0.65rem;
       border: 1px solid #edf4ef;
@@ -758,7 +758,7 @@ import { UserProfile } from '@core/auth.model';
       width: 2rem;
       height: 2rem;
       border: 3px solid #d0e3d6;
-      border-top-color: #08633f;
+      border-top-color: var(--forest-700);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -796,7 +796,7 @@ import { UserProfile } from '@core/auth.model';
 
     .modal-card {
       position: relative;
-      background: #ffffff;
+      background: var(--surface);
       border-radius: 1.25rem;
       width: 100%;
       max-width: 520px;
@@ -831,7 +831,7 @@ import { UserProfile } from '@core/auth.model';
     }
 
     .modal-close-btn:hover {
-      color: #08633f;
+      color: var(--forest-700);
       background: #eef4f0;
     }
 
@@ -850,7 +850,7 @@ import { UserProfile } from '@core/auth.model';
     .form-input, .form-select {
       width: 100%;
       border: 1px solid #c8ded1;
-      background: #ffffff;
+      background: var(--surface);
       border-radius: 0.65rem;
       padding: 0.65rem 0.85rem;
       font-size: 0.88rem;
@@ -860,8 +860,8 @@ import { UserProfile } from '@core/auth.model';
     }
 
     .form-input:focus, .form-select:focus {
-      border-color: #08633f;
-      box-shadow: 0 0 0 3px rgba(8, 99, 63, 0.12);
+      border-color: var(--forest-700);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--forest-700) 12%, transparent);
     }
 
     .modal-footer {
@@ -871,7 +871,7 @@ import { UserProfile } from '@core/auth.model';
       gap: 0.75rem;
       margin-top: 1.5rem;
       padding-top: 1rem;
-      border-top: 1px solid #e5ede7;
+      border-top: 1px solid var(--line-soft);
     }
   `,
 })

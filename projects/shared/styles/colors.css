@@ -1,0 +1,68 @@
+/* Shared brand and surface colors for the client and admin applications. */
+:root {
+  --forest-950: #063722;
+  --forest-900: #07482d;
+  --forest-800: #064e32;
+  --forest-700: #08633f;
+  --forest-600: #0c7a4c;
+  --brand-gradient-mid: #087049;
+  --brand-gradient-light: #119163;
+  --brand-gradient-accent: #0a8151;
+  --brand-progress-start: #17a76c;
+  --brand-progress-alt: #22ad71;
+  --brand-card-start: #06492e;
+  --brand-card-mid: #08764a;
+  --brand-card-end: #0f8c5b;
+  --mint-100: #e5f5eb;
+  --mint-50: #f2faf5;
+  --ink: #173b2b;
+  --ink-muted: #4e695c;
+  --line: #d7e5dc;
+  --surface: #ffffff;
+  --on-brand: #ffffff;
+  --canvas: #dfe9e2;
+  --surface-canvas: #f3f7f4;
+  --surface-tint: #f4faf6;
+  --surface-raised: #fbfdfc;
+  --surface-hover: #f7fbf9;
+  --surface-selected: #edf7f1;
+  --surface-muted: #edf2ef;
+  --surface-soft: #f3f7f4;
+  --line-strong: #d4e3d8;
+  --line-soft: #e5ede7;
+  --ink-secondary: #52665b;
+  --focus: #bd7418;
+}
+
+/* Tailwind utilities use the same values as component CSS. */
+@theme inline {
+  --color-primary: var(--forest-700);
+  --color-primary-hover: var(--forest-800);
+  --color-on-primary: var(--on-brand);
+  --color-brand-strong: var(--forest-900);
+  --color-brand-soft: var(--mint-100);
+  --color-brand-subtle: var(--mint-50);
+  --color-surface: var(--surface);
+  --color-surface-canvas: var(--surface-canvas);
+  --color-surface-tint: var(--surface-tint);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-selected: var(--surface-selected);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-soft: var(--surface-soft);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-line-soft: var(--line-soft);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-focus: var(--focus);
+  --color-forest-950: var(--forest-950);
+  --color-forest-900: var(--forest-900);
+  --color-forest-800: var(--forest-800);
+  --color-forest-700: var(--forest-700);
+  --color-forest-600: var(--forest-600);
+  --color-forest-100: var(--line);
+  --color-mint-100: var(--mint-100);
+  --color-mint-50: var(--mint-50);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+}

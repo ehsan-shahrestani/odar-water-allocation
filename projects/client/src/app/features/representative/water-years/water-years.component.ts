@@ -4,13 +4,14 @@ import { finalize, switchMap } from 'rxjs';
 import { AuthService } from '../../../core/auth.service';
 import { PortalDataService, WaterYearItem } from '../../../core/portal-data.service';
 import { ButtonComponent } from '../../../shared/button/button.component';
+import { DialogFocusDirective } from '../../../shared/dialog-focus/dialog-focus.directive';
 import { PersianDatepickerComponent } from '../../../shared/persian-datepicker/persian-datepicker.component';
 import { faNumber, parseHoursNumber } from '../../../core/mock-data';
 import { toast } from 'ngx-sonner';
 
 @Component({
   selector: 'app-water-years',
-  imports: [ButtonComponent, PersianDatepickerComponent],
+  imports: [DialogFocusDirective, ButtonComponent, PersianDatepickerComponent],
   templateUrl: './water-years.component.html',
   styleUrl: './water-years.component.css',
 })
@@ -31,10 +32,10 @@ export class WaterYearsComponent implements OnInit {
   protected readonly modalError = signal('');
   protected readonly wyDesc = signal('');
   protected readonly wyHoursPerShare = signal('');
-  protected readonly wyStartDate = signal('1404/07/01');
-  protected readonly wyEndDate = signal('1405/06/31');
-  protected readonly wyStartIso = signal('2025-09-23');
-  protected readonly wyEndIso = signal('2026-09-22');
+  protected readonly wyStartDate = signal('');
+  protected readonly wyEndDate = signal('');
+  protected readonly wyStartIso = signal('');
+  protected readonly wyEndIso = signal('');
 
   protected formatNumber(value: number | string | undefined | null): string {
     if (value === null || value === undefined || value === '') return '';
@@ -82,10 +83,10 @@ export class WaterYearsComponent implements OnInit {
   protected openModal(): void {
     this.wyDesc.set('');
     this.wyHoursPerShare.set('');
-    this.wyStartDate.set('1404/07/01');
-    this.wyEndDate.set('1405/06/31');
-    this.wyStartIso.set('2025-09-23');
-    this.wyEndIso.set('2026-09-22');
+    this.wyStartDate.set('');
+    this.wyEndDate.set('');
+    this.wyStartIso.set('');
+    this.wyEndIso.set('');
     this.modalError.set('');
     this.showModal.set(true);
   }
@@ -111,6 +112,11 @@ export class WaterYearsComponent implements OnInit {
       const msg = 'لطفاً تمامی فیلدهای الزامی را تکمیل کنید.';
       this.modalError.set(msg);
       toast.error(msg);
+      return;
+    }
+
+    if (endIso < startIso) {
+      this.modalError.set('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد.');
       return;
     }
 

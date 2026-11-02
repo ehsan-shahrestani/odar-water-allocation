@@ -261,7 +261,7 @@ import {
     .datepicker-label {
       font-size: 0.875rem;
       font-weight: 600;
-      color: #173b2b;
+      color: var(--ink);
     }
 
     .input-wrapper {
@@ -276,11 +276,11 @@ import {
       width: 100%;
       min-height: 42px;
       padding: 0.5rem 0.875rem;
-      background-color: #ffffff;
-      border: 1px solid #d7e5dc;
+      background-color: var(--surface);
+      border: 1px solid var(--line);
       border-radius: 0.75rem;
       font-size: 0.875rem;
-      color: #173b2b;
+      color: var(--ink);
       cursor: pointer;
       outline: none;
       transition: all 160ms ease-in-out;
@@ -288,14 +288,14 @@ import {
     }
 
     .datepicker-trigger:hover:not(:disabled) {
-      border-color: #08633f;
+      border-color: var(--forest-700);
       background-color: #fafdfb;
     }
 
     .datepicker-trigger:focus-visible,
     .datepicker-trigger.is-open {
-      border-color: #08633f;
-      box-shadow: 0 0 0 3px rgba(8, 99, 63, 0.15);
+      border-color: var(--forest-700);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--forest-700) 15%, transparent);
     }
 
     .datepicker-trigger.has-error {
@@ -319,7 +319,7 @@ import {
     .calendar-icon {
       width: 1.125rem;
       height: 1.125rem;
-      color: #08633f;
+      color: var(--forest-700);
       flex-shrink: 0;
     }
 
@@ -352,7 +352,7 @@ import {
 
     .datepicker-hint {
       font-size: 0.75rem;
-      color: #567064;
+      color: var(--ink-muted);
     }
 
     .datepicker-error {
@@ -386,7 +386,7 @@ import {
       border: none;
       padding: 0;
       margin: 0;
-      background-color: rgba(6, 55, 34, 0.4);
+      background-color: color-mix(in srgb, var(--forest-950) 40%, transparent);
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
       animation: fadeIn 200ms ease-out;
@@ -397,7 +397,7 @@ import {
       position: relative;
       width: 100%;
       max-width: 380px;
-      background-color: #ffffff;
+      background-color: var(--surface);
       border-radius: 1.5rem 1.5rem 0 0;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
       overflow: hidden;
@@ -417,7 +417,7 @@ import {
     .sheet-handle {
       width: 36px;
       height: 4px;
-      background-color: #d7e5dc;
+      background-color: var(--line);
       border-radius: 9999px;
       margin: 10px auto 0;
     }
@@ -434,7 +434,7 @@ import {
       justify-content: space-between;
       gap: 0.75rem;
       padding: 1rem 1.25rem 0.875rem;
-      border-bottom: 1px solid #edf2ef;
+      border-bottom: 1px solid var(--surface-muted);
     }
 
     .header-info {
@@ -446,7 +446,7 @@ import {
     .header-kicker {
       font-size: 0.6875rem;
       font-weight: 700;
-      color: #567064;
+      color: var(--ink-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
@@ -454,13 +454,13 @@ import {
     .header-date {
       font-size: 0.9375rem;
       font-weight: 700;
-      color: #063722;
+      color: var(--forest-950);
     }
 
     .today-pill {
       padding: 0.3125rem 0.75rem;
-      background-color: #e5f5eb;
-      color: #08633f;
+      background-color: var(--mint-100);
+      color: var(--forest-700);
       border: none;
       border-radius: 9999px;
       font-size: 0.75rem;
@@ -480,7 +480,7 @@ import {
       grid-template-columns: 1fr 1.3fr 1fr;
       gap: 0.5rem;
       padding: 0.75rem 1rem 1rem;
-      background: linear-gradient(180deg, #fbfdfc 0%, #f4f8f6 100%);
+      background: linear-gradient(180deg, var(--surface-raised) 0%, var(--surface-soft) 100%);
       user-select: none;
     }
 
@@ -494,7 +494,7 @@ import {
     .column-caption {
       font-size: 0.6875rem;
       font-weight: 600;
-      color: #748b80;
+      color: var(--ink-muted);
     }
 
     .wheel-col {
@@ -533,7 +533,7 @@ import {
       border: none;
       border-radius: 0.625rem;
       background: transparent;
-      color: #567064;
+      color: var(--ink-muted);
       font-size: 0.9375rem;
       font-weight: 500;
       cursor: pointer;
@@ -542,15 +542,15 @@ import {
     }
 
     .wheel-item:hover {
-      color: #08633f;
-      background-color: rgba(8, 99, 63, 0.06);
+      color: var(--forest-700);
+      background-color: color-mix(in srgb, var(--forest-700) 6%, transparent);
     }
 
     .wheel-item--active {
-      background: #08633f !important;
-      color: #ffffff !important;
+      background: var(--forest-700) !important;
+      color: var(--on-brand) !important;
       font-weight: 700 !important;
-      box-shadow: 0 4px 12px rgba(8, 99, 63, 0.28);
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--forest-700) 28%, transparent);
       transform: scale(1.06);
       z-index: 2;
     }
@@ -562,10 +562,10 @@ import {
       right: 0.75rem;
       left: 0.75rem;
       height: 36px;
-      border-top: 1.5px solid rgba(8, 99, 63, 0.22);
-      border-bottom: 1.5px solid rgba(8, 99, 63, 0.22);
+      border-top: 1.5px solid color-mix(in srgb, var(--forest-700) 22%, transparent);
+      border-bottom: 1.5px solid color-mix(in srgb, var(--forest-700) 22%, transparent);
       border-radius: 0.75rem;
-      background: rgba(8, 99, 63, 0.05);
+      background: color-mix(in srgb, var(--forest-700) 5%, transparent);
       pointer-events: none;
     }
 
@@ -575,8 +575,8 @@ import {
       justify-content: flex-end;
       gap: 0.625rem;
       padding: 0.875rem 1.25rem 1rem;
-      border-top: 1px solid #edf2ef;
-      background-color: #ffffff;
+      border-top: 1px solid var(--surface-muted);
+      background-color: var(--surface);
     }
 
     .wheel-btn {
@@ -589,25 +589,25 @@ import {
     }
 
     .wheel-btn--cancel {
-      border: 1px solid #d7e5dc;
-      background-color: #ffffff;
-      color: #567064;
+      border: 1px solid var(--line);
+      background-color: var(--surface);
+      color: var(--ink-muted);
     }
 
     .wheel-btn--cancel:hover {
-      background-color: #f4f8f6;
-      color: #173b2b;
+      background-color: var(--surface-soft);
+      color: var(--ink);
     }
 
     .wheel-btn--confirm {
       border: none;
-      background-color: #08633f;
-      color: #ffffff;
-      box-shadow: 0 2px 6px rgba(8, 99, 63, 0.25);
+      background-color: var(--forest-700);
+      color: var(--on-brand);
+      box-shadow: 0 2px 6px color-mix(in srgb, var(--forest-700) 25%, transparent);
     }
 
     .wheel-btn--confirm:hover {
-      background-color: #064e31;
+      background-color: var(--forest-800);
     }
 
     @keyframes fadeIn {

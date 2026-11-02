@@ -16,6 +16,7 @@ function formatJalaliDateWords(dateStr: string | null | undefined): string {
 }
 
 export interface FarmerDashboardData {
+  wellFarmerId: string | null;
   well: {
     id: string;
     name: string;
@@ -120,6 +121,16 @@ export interface FarmerWellDetail {
   }>;
 }
 
+export interface WaterTransferItem {
+  id: string;
+  date: string;
+  hours: number;
+  kind: string;
+  description: string | null;
+  direction: 'out' | 'in';
+  otherName: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PortalDataService {
   private readonly supabase = inject(SupabaseService).client;
@@ -131,6 +142,7 @@ export class PortalDataService {
     const emptyResult: FarmerDashboardData = {
       well: null,
       waterYear: null,
+      wellFarmerId: null,
       allocationId: null,
       quotaHours: 0,
       usedHours: 0,
@@ -146,9 +158,8 @@ export class PortalDataService {
       .limit(1)
       .maybeSingle();
 
-    if (wfError || !wf || !wf.wells) {
-      return emptyResult;
-    }
+    if (wfError) throw new Error('دریافت اطلاعات چاه ناموفق بود. دوباره تلاش کنید.');
+    if (!wf || !wf.wells) return emptyResult;
 
     const rawWell = wf.wells as unknown as { id: string; name: string; description: string | null };
     const well = {
@@ -166,9 +177,8 @@ export class PortalDataService {
       .limit(1)
       .maybeSingle();
 
-    if (wyError || !wy) {
-      return { ...emptyResult, well };
-    }
+    if (wyError) throw new Error('دریافت سال آبی ناموفق بود. دوباره تلاش کنید.');
+    if (!wy) return { ...emptyResult, well, wellFarmerId: wf.id };
 
     const waterYear = {
       id: wy.id,
@@ -186,9 +196,8 @@ export class PortalDataService {
       .eq('well_farmer_id', wf.id)
       .maybeSingle();
 
-    if (allocError || !alloc) {
-      return { ...emptyResult, well, waterYear };
-    }
+    if (allocError) throw new Error('دریافت سهمیه ناموفق بود. دوباره تلاش کنید.');
+    if (!alloc) return { ...emptyResult, well, waterYear, wellFarmerId: wf.id };
 
     const quotaHours = Number(alloc.allocated_hours) || 0;
 
@@ -197,19 +206,10 @@ export class PortalDataService {
       .from('water_usages')
       .select('id, consumed_hours, used_at, description, turned_on_pump, turned_off_pump, received_from_well_farmer_id, delivered_to_well_farmer_id')
       .eq('allocation_id', alloc.id)
-      .order('used_at', { ascending: false })
-      .limit(10);
+      .order('used_at', { ascending: false });
 
     if (usagesError || !usages) {
-      return {
-        well,
-        waterYear,
-        allocationId: alloc.id,
-        quotaHours,
-        usedHours: 0,
-        remainingHours: quotaHours,
-        recentUsages: [],
-      };
+      throw new Error('دریافت مصرف آب ناموفق بود. دوباره تلاش کنید.');
     }
 
     // Fetch well farmers to resolve transfer names
@@ -230,11 +230,12 @@ export class PortalDataService {
     return {
       well,
       waterYear,
+      wellFarmerId: wf.id,
       allocationId: alloc.id,
       quotaHours,
       usedHours: Math.round(usedHours * 10000) / 10000,
       remainingHours,
-      recentUsages: usages.map((u) => {
+      recentUsages: usages.slice(0, 10).map((u) => {
         let receivedFromText: string | null = null;
         if (u.turned_on_pump) {
           receivedFromText = 'روشن کردن چاه';
@@ -284,18 +285,19 @@ export class PortalDataService {
       .limit(1)
       .maybeSingle();
 
-    if (wellError || !well) {
-      return emptyResult;
-    }
+    if (wellError) throw new Error('دریافت اطلاعات چاه ناموفق بود. دوباره تلاش کنید.');
+    if (!well) return emptyResult;
 
     // 2. Find active or latest water year
-    const { data: wy } = await this.supabase
+    const { data: wy, error: yearError } = await this.supabase
       .from('water_years')
       .select('id, description, start_date, end_date, hours_per_share')
       .eq('well_id', well.id)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    if (yearError) throw new Error('دریافت سال آبی ناموفق بود. دوباره تلاش کنید.');
 
     const waterYear = wy
       ? {
@@ -317,7 +319,8 @@ export class PortalDataService {
       .select('id, farmer_id, display_name, profiles ( id, full_name, phone )')
       .eq('well_id', well.id);
 
-    if (wfError || !wfList || wfList.length === 0) {
+    if (wfError) throw new Error('دریافت فهرست کشاورزان ناموفق بود. دوباره تلاش کنید.');
+    if (!wfList || wfList.length === 0) {
       return {
         well: { id: well.id, name: well.name, description: well.description },
         waterYear,
@@ -350,22 +353,24 @@ export class PortalDataService {
           };
         }
 
-        const { data: alloc } = await this.supabase
+        const { data: alloc, error: allocationError } = await this.supabase
           .from('water_allocations')
           .select('id, allocated_hours')
           .eq('water_year_id', wy.id)
           .eq('well_farmer_id', item.id)
           .maybeSingle();
 
+        if (allocationError) throw new Error('دریافت سهمیه کشاورزان ناموفق بود. دوباره تلاش کنید.');
         const quotaHours = alloc ? Number(alloc.allocated_hours) || 0 : 0;
         let usedHours = 0;
 
         if (alloc) {
-          const { data: usages } = await this.supabase
+          const { data: usages, error: usageError } = await this.supabase
             .from('water_usages')
             .select('consumed_hours')
             .eq('allocation_id', alloc.id);
 
+          if (usageError) throw new Error('دریافت مصرف آب ناموفق بود. دوباره تلاش کنید.');
           usedHours = (usages || []).reduce((sum, u) => sum + (Number(u.consumed_hours) || 0), 0);
         }
 
@@ -389,6 +394,39 @@ export class PortalDataService {
       waterYear,
       farmers: farmerItems,
     };
+  }
+
+  async getWaterTransfers(yearId: string, wellFarmerId: string, wellId: string): Promise<WaterTransferItem[]> {
+    if (!yearId || !wellFarmerId) return [];
+    const [{ data, error }, { data: farmers }] = await Promise.all([
+      this.supabase.from('water_transfers').select('id, created_at, hours, kind, description, from_well_farmer_id, to_well_farmer_id')
+        .eq('water_year_id', yearId).or(`from_well_farmer_id.eq.${wellFarmerId},to_well_farmer_id.eq.${wellFarmerId}`)
+        .order('created_at', { ascending: false }),
+      this.supabase.from('well_farmers').select('id, display_name, profiles(full_name)').eq('well_id', wellId),
+    ]);
+    if (error) throw new Error('خطا در دریافت انتقال‌ها');
+    const names = new Map((farmers || []).map((f) => {
+      const profile = f.profiles as unknown as { full_name: string } | null;
+      return [f.id, f.display_name?.trim() || profile?.full_name || 'کشاورز'];
+    }));
+    return (data || []).map((t) => ({
+      id: t.id, date: new Intl.DateTimeFormat('fa-IR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Tehran' }).format(new Date(t.created_at)),
+      hours: Number(t.hours), kind: t.kind, description: t.description,
+      direction: t.from_well_farmer_id === wellFarmerId ? 'out' as const : 'in' as const,
+      otherName: names.get(t.from_well_farmer_id === wellFarmerId ? t.to_well_farmer_id : t.from_well_farmer_id) || 'کشاورز',
+    }));
+  }
+
+  async transferWater(params: { yearId: string; from: string; to: string; hours: number; kind: string; description: string }): Promise<boolean> {
+    const { data, error } = await this.supabase.rpc('transfer_water', {
+      p_year: params.yearId, p_from: params.from, p_to: params.to, p_hours: params.hours,
+      p_kind: params.kind, p_description: params.description,
+    });
+    if (error) throw new Error(error.message);
+    try {
+      const result = await this.supabase.functions.invoke('send-transfer-sms', { body: { transferId: data } });
+      return !result.error && result.data?.success === true;
+    } catch { return false; }
   }
 
   /**
@@ -668,13 +706,14 @@ export class PortalDataService {
     }
 
     // 2. Find allocation for this well_farmer in this water year
-    const { data: alloc } = await this.supabase
+    const { data: alloc, error: allocationError } = await this.supabase
       .from('water_allocations')
       .select('id, allocated_hours')
       .eq('water_year_id', params.waterYearId)
       .eq('well_farmer_id', wf.id)
       .maybeSingle();
 
+    if (allocationError) throw new Error('دریافت سهمیه ناموفق بود. دوباره تلاش کنید.');
     if (!alloc) {
       return {
         farmer: farmerInfo,
@@ -691,12 +730,13 @@ export class PortalDataService {
     const quotaHours = Number(alloc.allocated_hours) || 0;
 
     // 3. Fetch usages for this allocation
-    const { data: usages } = await this.supabase
+    const { data: usages, error: usageError } = await this.supabase
       .from('water_usages')
       .select('id, consumed_hours, used_at, description, turned_on_pump, turned_off_pump, received_from_well_farmer_id, delivered_to_well_farmer_id')
       .eq('allocation_id', alloc.id)
       .order('used_at', { ascending: false });
 
+    if (usageError) throw new Error('دریافت مصرف آب ناموفق بود. دوباره تلاش کنید.');
     const usageList = usages || [];
     const usedHours = usageList.reduce((acc, u) => acc + (Number(u.consumed_hours) || 0), 0);
     const remainingHours = Math.max(0, Math.round((quotaHours - usedHours) * 10000) / 10000);

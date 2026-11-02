@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, switchMap } from 'rxjs';
 import { toast } from 'ngx-sonner';
 import { AuthService } from '../../../core/auth.service';
-import { FarmerDashboardData, PortalDataService } from '../../../core/portal-data.service';
+import { FarmerDashboardData, PortalDataService, WaterTransferItem } from '../../../core/portal-data.service';
 import { ButtonComponent } from '../../../shared/button/button.component';
 import { CardComponent } from '../../../shared/card/card.component';
 import { PageHeaderComponent } from '../../../shared/page-header/page-header.component';
@@ -51,6 +51,7 @@ import { faNumber, formatHoursDisplay } from '../../../core/mock-data';
           <!-- Right Column: Quota Balance & Water Year Info (5 cols) -->
           <div class="md:col-span-5 space-y-5">
             <!-- Quota Balance Card -->
+            @if (dashboard()?.allocationId) {
             <app-card [emphasis]="true">
               <p class="balance-label">مانده سهمیه آب شما</p>
               <div class="balance-number">
@@ -67,14 +68,20 @@ import { faNumber, formatHoursDisplay } from '../../../core/mock-data';
                 </div>
               </div>
             </app-card>
+            } @else {
+              <app-card>
+                <h2 class="font-bold text-ink">سهمیه آب ثبت نشده است</h2>
+                <p class="text-sm text-ink-muted mt-2">برای ثبت سهمیه با نماینده چاه تماس بگیرید.</p>
+              </app-card>
+            }
 
             <!-- Water Year Info Card -->
             @if (dashboard()?.waterYear; as wy) {
               <app-card>
-                <div class="flex items-center justify-between pb-2 mb-2 border-b border-forest-100">
-                  <h2 class="font-bold text-forest-900">{{ wy.name }}</h2>
+                <div class="flex items-center justify-between pb-2 mb-2 border-b border-line">
+                  <h2 class="font-bold text-brand-strong">{{ wy.name }}</h2>
                   <span
-                    class="text-xs bg-mint-100 text-primary px-2 py-0.5 rounded-full font-medium"
+                    class="text-xs bg-brand-soft text-primary px-2 py-0.5 rounded-full font-medium"
                     >سال آبی جاری</span
                   >
                 </div>
@@ -103,6 +110,25 @@ import { faNumber, formatHoursDisplay } from '../../../core/mock-data';
 
           <!-- Left Column: Recent Usages Section (7 cols) -->
           <div class="md:col-span-7 space-y-5">
+            <section aria-labelledby="farmer-transfers-title">
+              <h2 id="farmer-transfers-title" class="section-title">انتقال‌های آب</h2>
+              <app-card>
+                @if (transfersLoading()) {
+                  <p class="empty-state" role="status">در حال دریافت انتقال‌ها...</p>
+                } @else if (transfersError()) {
+                  <div class="space-y-3" role="alert"><p>دریافت انتقال‌ها ناموفق بود.</p><button app-button type="button" variant="secondary" (click)="retryTransfers()">تلاش مجدد</button></div>
+                } @else if (transfers().length) {
+                  <ul class="divided-list">
+                    @for (transfer of transfers(); track transfer.id) {
+                      <li><div><strong>{{ transfer.direction === 'out' ? 'انتقال به' : 'دریافت از' }} {{ transfer.otherName }}</strong>
+                        <div>{{ transfer.kind === 'sale' ? 'فروش' : transfer.kind === 'loan' ? 'قرض' : transfer.kind === 'return' ? 'بازپرداخت' : 'اصلاح' }} · {{ transfer.date }}</div>
+                        @if (transfer.description) { <p>{{ transfer.description }}</p> }
+                      </div><strong>{{ hoursDisplay(transfer.hours) }}</strong></li>
+                    }
+                  </ul>
+                } @else { <p class="empty-state">انتقالی ثبت نشده است.</p> }
+              </app-card>
+            </section>
             <!-- Recent Usages Section -->
             <section aria-labelledby="usage-heading">
               <h2 id="usage-heading" class="section-title">گزارش مصرف‌های اخیر</h2>
@@ -118,12 +144,12 @@ import { faNumber, formatHoursDisplay } from '../../../core/mock-data';
                               @if (usage.turnedOnPump) {
                                 <span class="text-amber-800">⚡ روشن کردن چاه</span>
                               } @else if (usage.receivedFromText) {
-                                <span><span class="text-stone-400">تحویل از:</span> {{ usage.receivedFromText }}</span>
+                                <span><span class="text-ink-muted">تحویل از:</span> {{ usage.receivedFromText }}</span>
                               }
                               @if (usage.turnedOffPump) {
                                 <span class="text-rose-800">🛑 خاموش کردن چاه</span>
                               } @else if (usage.deliveredToText) {
-                                <span><span class="text-stone-400">تحویل به:</span> {{ usage.deliveredToText }}</span>
+                                <span><span class="text-ink-muted">تحویل به:</span> {{ usage.deliveredToText }}</span>
                               }
                             </div>
                           }
@@ -157,6 +183,9 @@ export class FarmerHomeComponent implements OnInit {
 
   protected readonly loading = signal(true);
   protected readonly error = signal('');
+  protected readonly transfers = signal<WaterTransferItem[]>([]);
+  protected readonly transfersLoading = signal(false);
+  protected readonly transfersError = signal(false);
   protected readonly dashboard = signal<FarmerDashboardData | null>(null);
   protected readonly number = faNumber;
   protected readonly hoursDisplay = (v: number) => formatHoursDisplay(v);
@@ -168,6 +197,21 @@ export class FarmerHomeComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadData();
+  }
+
+  protected retryTransfers(): void {
+    const data = this.dashboard();
+    this.transfers.set([]);
+    this.transfersError.set(false);
+    if (!data?.waterYear || !data.well || !data.wellFarmerId) {
+      this.transfersLoading.set(false);
+      return;
+    }
+    this.transfersLoading.set(true);
+    void this.portalData.getWaterTransfers(data.waterYear.id, data.wellFarmerId, data.well.id)
+      .then(items => this.transfers.set(items))
+      .catch(() => this.transfersError.set(true))
+      .finally(() => this.transfersLoading.set(false));
   }
 
   protected loadData(): void {
@@ -184,6 +228,7 @@ export class FarmerHomeComponent implements OnInit {
       .subscribe({
         next: (data) => {
           this.dashboard.set(data);
+          this.retryTransfers();
         },
         error: (err: unknown) => {
           const msg = err instanceof Error ? err.message : 'خطا در دریافت اطلاعات سامانه';

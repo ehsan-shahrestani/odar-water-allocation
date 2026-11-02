@@ -27,7 +27,10 @@ export class MobilePlatformService {
 
   private async setupStatusBar(): Promise<void> {
     try {
-      await StatusBar.setBackgroundColor({ color: '#07482d' });
+      const backgroundColor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--forest-900')
+        .trim();
+      if (backgroundColor) await StatusBar.setBackgroundColor({ color: backgroundColor });
       await StatusBar.setStyle({ style: Style.Dark });
     } catch (err) {
       console.warn('StatusBar not available:', err);

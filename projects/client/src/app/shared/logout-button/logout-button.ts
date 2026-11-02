@@ -68,7 +68,7 @@ import { AuthService } from '../../core/auth.service';
       cursor: pointer;
     }
     button:focus-visible {
-      outline: 3px solid #08633f;
+      outline: 3px solid var(--forest-700);
       outline-offset: 3px;
     }
     button:disabled {
@@ -81,7 +81,7 @@ import { AuthService } from '../../core/auth.service';
       justify-content: center;
       gap: 8px;
       color: #9f1239;
-      background: #fff;
+      background: var(--surface);
       border: 1px solid #e5d5d9;
     }
     .logout-trigger.compact {
@@ -89,9 +89,9 @@ import { AuthService } from '../../core/auth.service';
       padding: 10px;
       border: none;
       background: #ffffffb3;
-      border: 1px solid #d7e5dc;
+      border: 1px solid var(--line);
       border-radius: 14px;
-      color: #52665b;
+      color: var(--ink-secondary);
     }
     .logout-trigger:hover {
       background: #fff1f2;
@@ -107,11 +107,11 @@ import { AuthService } from '../../core/auth.service';
       overflow: auto;
       margin: auto;
       padding: 24px;
-      border: 1px solid #d7e5dc;
+      border: 1px solid var(--line);
       border-radius: 20px;
-      background: #fff;
-      color: #183b29;
-      box-shadow: 0 20px 60px #06372226;
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: 0 20px 60px color-mix(in srgb, var(--forest-950) 14.902%, transparent);
     }
     dialog::backdrop {
       background: #10291db3;
@@ -135,13 +135,13 @@ import { AuthService } from '../../core/auth.service';
     }
     .cancel-button {
       border: 1px solid #bedaca;
-      background: #fff;
-      color: #183b29;
+      background: var(--surface);
+      color: var(--ink);
     }
     .confirm-button {
       border: 1px solid #9f1239;
       background: #9f1239;
-      color: #fff;
+      color: var(--on-brand);
     }
     .logout-error {
       color: #9f1239;
