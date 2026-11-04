@@ -30,6 +30,8 @@ TABLE_ORDER = (
     "water_allocations",
     "water_usages",
     "well_expenses",
+    "water_transfers",
+    "well_registration_requests",
 )
 IGNORED_PUBLIC_TABLES = {"admin_otp_codes", "client_otp_codes", "admin_mfa_sessions"}  # One-time codes must not be replayed.
 MAX_MEMBER_BYTES = 512 * 1024 * 1024

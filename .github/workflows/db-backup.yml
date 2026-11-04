@@ -39,6 +39,11 @@ jobs:
       - name: Check out backup verification scripts
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Check backup recovery scripts and table coverage
+        run: |
+          python3 scripts/test_restore_public.py
+          python3 -m unittest discover -s tests -p 'test_restore_public.py'
+
       - name: Install Supabase CLI
         uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1
         with:

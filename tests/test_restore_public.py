@@ -73,6 +73,26 @@ class RestorePublicTests(unittest.TestCase):
         self.assertNotIn("ON CONFLICT (id) DO NOTHING", sql)
         self.assertNotIn("TRUNCATE TABLE auth.", sql)
 
+    def test_new_business_data_is_restored_and_verified_in_both_modes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            snapshot = recovery.load_snapshot(make_archive(Path(directory)))
+        for mode in ("missing", "full"):
+            sql = recovery.render_sql(snapshot, mode)
+            for table in ("water_transfers", "well_registration_requests"):
+                with self.subTest(mode=mode, table=table):
+                    self.assertEqual(snapshot.blocks[table].count, 1)
+                    self.assertIn(snapshot.blocks[table].lines[0], sql)
+                    self.assertIn(f'COPY pg_temp."odar_restore_{table}"', sql)
+                    self.assertIn(f'INSERT INTO public."{table}"', sql)
+                    self.assertIn(f'Snapshot IDs missing after restore: {table}', sql)
+                    if mode == "full":
+                        truncate = next(line for line in sql.splitlines() if line.startswith('TRUNCATE TABLE'))
+                        self.assertIn(f'public."{table}"', truncate)
+                        self.assertIn(f'Row count differs after full restore: {table}', sql)
+            for parent in ("profiles", "water_years", "well_farmers"):
+                self.assertLess(sql.index(f'INSERT INTO public."{parent}"'),
+                                sql.index('INSERT INTO public."water_transfers"'))
+
     def test_corrupted_checksum_stops_before_rendering(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(recovery.RestoreError, "Checksum mismatch"):

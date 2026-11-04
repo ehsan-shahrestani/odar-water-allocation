@@ -5,8 +5,9 @@ from pathlib import Path
 import tempfile
 import tarfile
 import io
+import re
 import unittest
-from restore_public import parse_blocks, read_archive, RestoreError, TABLE_ORDER
+from restore_public import parse_blocks, read_archive, RestoreError, TABLE_ORDER, IGNORED_PUBLIC_TABLES
 
 class RestoreTests(unittest.TestCase):
     def dump(self, extra=''):
@@ -20,6 +21,27 @@ class RestoreTests(unittest.TestCase):
     def test_unknown_public_tables_fail_closed(self):
         with self.assertRaises(RestoreError):
             parse_blocks(self.dump('COPY "public"."unexpected" ("id") FROM stdin;\n\\.\n'))
+
+    def test_tables_created_by_migrations_are_classified(self):
+        migrations = Path(__file__).resolve().parents[1] / 'supabase' / 'migrations'
+        tables = set()
+        for migration in migrations.glob('*.sql'):
+            tables.update(re.findall(
+                r'\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?public\.([a-z_]+)',
+                migration.read_text(encoding='utf-8'), re.IGNORECASE,
+            ))
+        self.assertTrue(tables)
+        self.assertEqual(tables - set(TABLE_ORDER) - IGNORED_PUBLIC_TABLES, set())
+
+    def test_new_business_tables_are_required_and_duplicates_rejected(self):
+        for table in ('water_transfers', 'well_registration_requests'):
+            with self.subTest(table=table):
+                block = f'COPY "public"."{table}" ("id") FROM stdin;\n\\.\n'.encode()
+                self.assertIn(block, self.dump())
+                with self.assertRaisesRegex(RestoreError, 'missing a required'):
+                    parse_blocks(self.dump().replace(block, b''))
+                with self.assertRaisesRegex(RestoreError, 'repeated public COPY block'):
+                    parse_blocks(self.dump() + block)
 
     def test_checksum_corruption_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
