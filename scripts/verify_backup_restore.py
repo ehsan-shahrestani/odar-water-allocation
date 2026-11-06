@@ -2,7 +2,8 @@
 """Verify an archive by restoring it into a disposable local Supabase database.
 
 Only Docker's isolated test container is targeted; no production connection is
-accepted. Sensitive dump content and psql errors are never printed.
+accepted. Only SQLSTATE, source locations and simple relation identifiers from
+psql errors are reported; dump content and raw errors are never printed.
 """
 import argparse
 import re
@@ -13,15 +14,57 @@ import uuid
 from restore_public import read_archive, load_snapshot, render_sql, TABLE_ORDER
 
 
-def run(command, **options):
+def run(command, *, sources=(), **options):
     result = subprocess.run(command, capture_output=True, **options)
     if result.returncode:
         # SQL error output can contain personal data from COPY or query text.
         error = result.stderr.decode(errors='replace') if isinstance(result.stderr, bytes) else result.stderr
-        codes = re.findall(r'ERROR:\s+([A-Z0-9]{5})(?:\s|$)', error or '')
-        diagnostic = ' (SQLSTATE ' + ', '.join(codes) + ')' if codes else ''
+        diagnostics = []
+        for line in (error or '').splitlines():
+            match = re.search(r'ERROR:\s+([A-Z0-9]{5})(?::|\s|$)', line)
+            if not match:
+                continue
+            code = match.group(1)
+            diagnostics.append('SQLSTATE ' + code)
+            location = re.match(r'psql:<stdin>:(\d+):', line)
+            if location:
+                number = int(location.group(1))
+                for name, start, end in sources:
+                    if start <= number <= end:
+                        diagnostics.append(f'{name}:{number - start + 1}')
+                        break
+            # Never log DETAIL, CONTEXT, query text, COPY rows or arbitrary
+            # messages. Accept only PostgreSQL's missing-relation message and
+            # simple identifiers (no whitespace, quotes or control characters).
+            if code == '42P01':
+                relation = re.fullmatch(
+                    r'\s*relation "([a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]*)?)" does not exist\s*',
+                    line[match.end():],
+                )
+                if relation:
+                    diagnostics.append('missing relation ' + relation.group(1))
+        diagnostic = ' (' + '; '.join(diagnostics) + ')' if diagnostics else ''
         raise RuntimeError('Isolated backup restore failed: ' + command[0] + diagnostic)
     return result
+
+
+def run_sql(container, sections):
+    """Keep one transaction, while mapping psql line numbers to archive files."""
+    chunks = []
+    sources = []
+    start = 1
+    for name, content in sections:
+        chunk = content + b'\n'
+        end = start + chunk.count(b'\n') - 1
+        chunks.append(chunk)
+        sources.append((name, start, end))
+        start = end + 1
+    return run(
+        ['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin',
+         '-d', 'postgres', '-X', '-v', 'ON_ERROR_STOP=1', '-v',
+         'VERBOSITY=verbose', '--single-transaction', '--file=-'],
+        input=b''.join(chunks), sources=sources,
+    )
 
 
 def verify(archive):
@@ -43,12 +86,17 @@ def verify(archive):
             run(['supabase', 'db', 'start', '--workdir', directory])
             # Supabase manages Auth/Storage schemas itself. The archive restores
             # custom schema and data onto the matching local platform baseline.
-            sql = files['roles.sql'] + b'\n' + files['schema.sql'] + b'\nSET session_replication_role = replica;\n' + files['data.sql'] + b'\nSET session_replication_role = origin;\n'
             print('Restoring archived roles, schema and data...', flush=True)
-            run(['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin', '-d', 'postgres', '-X', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=sqlstate', '--single-transaction'], input=sql)
+            run_sql(container, [
+                ('roles.sql', files['roles.sql']),
+                ('schema.sql', files['schema.sql']),
+                ('restore-settings', b'SET session_replication_role = replica;'),
+                ('data.sql', files['data.sql']),
+                ('restore-settings', b'SET session_replication_role = origin;'),
+            ])
             # Exercise the same public-data recovery transaction used in an incident.
             print('Testing public-data recovery...', flush=True)
-            run(['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin', '-d', 'postgres', '-X', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=sqlstate', '--single-transaction'], input=render_sql(snapshot, 'full').encode())
+            run_sql(container, [('public-recovery.sql', render_sql(snapshot, 'full').encode())])
             for table in TABLE_ORDER:
                 result = run(['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin', '-d', 'postgres', '-At', '-c', f'SELECT count(*) FROM public."{table}";'])
                 if int(result.stdout.strip()) != snapshot.blocks[table].count:

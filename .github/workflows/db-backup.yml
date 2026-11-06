@@ -42,7 +42,7 @@ jobs:
       - name: Check backup recovery scripts and table coverage
         run: |
           python3 scripts/test_restore_public.py
-          python3 -m unittest discover -s tests -p 'test_restore_public.py'
+          python3 -m unittest discover -s tests -p 'test_*restore*.py'
 
       - name: Install Supabase CLI
         uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1

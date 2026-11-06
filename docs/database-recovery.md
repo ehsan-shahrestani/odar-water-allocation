@@ -68,12 +68,15 @@ python3 scripts/restore_public.py /path/to/odar-supabase-backup.tar.gz \
 
 نسخه Supabase CLI و نسخه اکشن‌ها ثابت هستند. فایل دانلودشده باید دقیقاً با فایل اصلی برابر باشد و checksum داخلی آرشیو نیز کنترل می‌شود. سپس `scripts/verify_backup_restore.py` ساختار و داده را روی Supabase محلی بازیابی و تراکنش بازیابی داده‌های عمومی و تعداد رکوردها را بررسی می‌کند. محتوای حساس SQL و خطاهای COPY در لاگ چاپ نمی‌شوند.
 
+اگر بازیابی شکست بخورد، لاگ کد SQLSTATE و نام فایل و شمارهٔ خط را نشان می‌دهد. برای خطای `42P01`، نام سادهٔ relation گمشده هم گزارش می‌شود؛ متن کامل خطای دیتابیس و داده‌های رکوردها چاپ نمی‌شوند. این خطا یعنی جدول یا relation مورد نیاز در زمان اجرای دستور وجود ندارد. برای تشخیص تفاوت ساختار بکاپ با دیتابیس محلی، نام relation و محل خطا را بررسی کنید.
+
 شکست پیامک، نتیجه بک‌آپ را تغییر نمی‌دهد. اجرای دستی به‌طور پیش‌فرض پیامک نمی‌فرستد؛ گزینه `notify` باید صریحاً فعال شود. برنامهٔ شبانه اعلان دارد. زمان ۰۱:۰۰ تهران زمان درخواست اجراست؛ GitHub ممکن است اجرای برنامه را با تأخیر شروع کند.
 
 تست‌های محلی بدون ارسال پیامک:
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/test_restore_public.py
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*restore*.py'
 python3 scripts/test_otp_database.py
 npx vitest run supabase/functions
 ```
