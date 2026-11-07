@@ -12,6 +12,32 @@ import verify_backup_restore as verification
 
 
 class VerificationTests(unittest.TestCase):
+    def test_storage_version_is_pinned_before_database_start(self):
+        class StartupChecked(Exception):
+            pass
+
+        def check_start(command, **options):
+            self.assertEqual(command[:3], ['supabase', 'db', 'start'])
+            workdir = Path(command[command.index('--workdir') + 1])
+            self.assertEqual(
+                (workdir / 'supabase' / '.temp' / 'storage-version').read_text(),
+                'v1.90.0\n',
+            )
+            self.assertFalse((workdir / 'supabase' / '.temp' / 'project-ref').exists())
+            raise StartupChecked
+
+        with (
+            patch.object(verification, 'read_archive', return_value={}),
+            patch.object(verification, 'load_snapshot'),
+            patch.object(verification, 'run', side_effect=check_start),
+            patch.object(verification.subprocess, 'run') as cleanup,
+            patch('builtins.print'),
+        ):
+            with self.assertRaises(StartupChecked):
+                verification.verify(Path('synthetic-backup.tar.gz'))
+        self.assertEqual(cleanup.call_args.args[0][:2], ['supabase', 'stop'])
+        self.assertIn('--no-backup', cleanup.call_args.args[0])
+
     def failure(self, stderr, sources=()):
         result = CompletedProcess(['docker'], 1, b'', stderr)
         with patch.object(verification.subprocess, 'run', return_value=result):

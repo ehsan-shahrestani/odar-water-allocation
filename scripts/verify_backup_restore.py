@@ -14,6 +14,12 @@ import uuid
 from restore_public import read_archive, load_snapshot, render_sql, TABLE_ORDER
 
 
+# CLI 2.119.0 bundles Storage v1.79.28, which predates the hosted lifecycle
+# state tables. Let the CLI apply the official migrations from this pinned
+# version instead of inventing tables or excluding their data from the test.
+STORAGE_VERSION = 'v1.90.0'
+
+
 def run(command, *, sources=(), **options):
     result = subprocess.run(command, capture_output=True, **options)
     if result.returncode:
@@ -81,8 +87,14 @@ def verify(archive):
             port_socket.bind(('127.0.0.1', 0))
             port = port_socket.getsockname()[1]
         (config / 'config.toml').write_text(f'project_id = "{project}"\n[db]\nport = {port}\nmajor_version = 17\n')
+        # The same service-version pin that `supabase link` writes, scoped to
+        # this disposable project. No production credentials or link is used.
+        pins = config / '.temp'
+        pins.mkdir()
+        (pins / 'storage-version').write_text(STORAGE_VERSION + '\n')
         container = 'supabase_db_' + project
         try:
+            print(f'Preparing isolated database with Storage {STORAGE_VERSION}...', flush=True)
             run(['supabase', 'db', 'start', '--workdir', directory])
             # Supabase manages Auth/Storage schemas itself. The archive restores
             # custom schema and data onto the matching local platform baseline.
